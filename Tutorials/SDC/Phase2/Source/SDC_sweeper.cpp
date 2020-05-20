@@ -30,7 +30,7 @@ void SDC_advance(MultiFab& phi_old,
       and uncoupled
 
       the constants a,d, and r control the strength of each term
-  */
+  */ 
     
     // Need to advance time in here as we have a forcing term: So we make nodal fraction which you use as you step through the array.
     // std::cout << std::setprecision(30), Print() << SetPrecision(30) << …stuff…, Print().SetPrecision(30) << a << std::endl;
@@ -263,7 +263,6 @@ void SDC_fcomp(MultiFab& rhs,
   const Box& domain_bx = geom.Domain();
   const Real* dx = geom.CellSize();
   Real qij;
-  Real t;
   int numV=0;
     
     // relative and absolute tolerances for linear solve
@@ -272,7 +271,7 @@ void SDC_fcomp(MultiFab& rhs,
   const Real tol_res = 1.e-10;    // Tolerance on residual
   Real resnorm = 1.e10;    // Tolerance on residual
     Real zeroReal = 0.0;
-    Real corrnorm;
+    //  Real corrnorm;
   // Make some space for iteration stuff
   MultiFab corr(ba, dm, 1, 2);
   MultiFab resid(ba, dm, 1, 0);

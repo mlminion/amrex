@@ -23,7 +23,6 @@ void main_main ()
     Real a;  // advection coef.
     Real d;  // diffusion coef.
     Real r;  // reaction coef. 
-    Real test_norm;
     // AMREX_SPACEDIM: number of dimensions
     int n_cell, max_grid_size, Nsteps, plot_int, Nprob;
     Vector<int> bc_lo(AMREX_SPACEDIM,0);
@@ -210,10 +209,7 @@ void main_main ()
     SDCstruct SDCmats(Nnodes,Npieces,phi_old);
     SDCmats.Nsweeps =Nsweeps;  // Number of SDC sweeps per time step
     
-    const Real* dx = geom.CellSize();
-    
     // Write a plotfile of the initial data if plot_int > 0 (plot_int was defined in the inputs file)
-
     MultiFab::Copy(phi_old, phi_new, 0, 0, 1, 2);
     
     
@@ -551,26 +547,24 @@ mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(face_bcoef));
       time = time + dt;
       
       if (plot_err == 1)  // Turn the solution into the error
-       // if(time >0.0999){
-                for ( MFIter mfi(phi_new); mfi.isValid(); ++mfi )
-                  {
-                    const Box& bx = mfi.validbox();
-                    err_phi(BL_TO_FORTRAN_BOX(bx),
-                        BL_TO_FORTRAN_ANYD(phi_new[mfi]),
-                        geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&a,&d,&r,&time, &epsilon,&k_freq, &kappa, &Nprob);
-                  }
-            
-                    // Tell the I/O Processor to write out which step we're doing
-                  //  amrex::Print() << "Advanced step " << n << "\n";
-                amrex::Print() << "max error in phi " << phi_new.norm0() << "\n";
-                    // Write a plotfile of the current data (plot_int was defined in the inputs file)
-                    if (plot_int > 0 && n%plot_int == 0)
-                    {
-                        const std::string& pltfile = amrex::Concatenate("plt",n,5);
-                        WriteSingleLevelPlotfile(pltfile, phi_new, {"phi"}, geom, time, n);
-                    }
-            
-       // }
+	for ( MFIter mfi(phi_new); mfi.isValid(); ++mfi )
+	  {
+	    const Box& bx = mfi.validbox();
+	    err_phi(BL_TO_FORTRAN_BOX(bx),
+		    BL_TO_FORTRAN_ANYD(phi_new[mfi]),
+		    geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&a,&d,&r,&time, &epsilon,&k_freq, &kappa, &Nprob);
+	  }
+      
+      // Tell the I/O Processor to write out which step we're doing
+      //  amrex::Print() << "Advanced step " << n << "\n";
+      amrex::Print() << "max error in phi " << phi_new.norm0() << "\n";
+      // Write a plotfile of the current data (plot_int was defined in the inputs file)
+      if (plot_int > 0 && n%plot_int == 0)
+	{
+	  const std::string& pltfile = amrex::Concatenate("plt",n,5);
+	  WriteSingleLevelPlotfile(pltfile, phi_new, {"phi"}, geom, time, n);
+	}
+      
     }
     // Call the timer again and compute the maximum difference between the start time and stop time
     //   over all processors
