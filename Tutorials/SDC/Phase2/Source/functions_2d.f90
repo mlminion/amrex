@@ -37,6 +37,7 @@ gauss_weights = (/ (5.d0/18.d0),(8.d0/18.d0),(5.d0/18.d0)/)
 
 pi=3.14159265358979323846d0
 om=k_freq*pi
+!f=0.0d0
   select case(n)
      case (0)  !  Explicit term (here it is advection)
         ! x-fluxes
@@ -348,7 +349,7 @@ real(amrex_real), intent(in   ) :: prob_lo(2)
 real(amrex_real), intent(in   ) :: prob_hi(2)
 real(amrex_real), intent(in   ) :: k_freq, time, kappa, epsilon
 integer          :: i,j, i_quad, j_quad, face_index
-double precision :: x,y,tupi,t0,d, pi, x_quad, y_quad
+double precision :: x,y,tupi, pi, x_quad, y_quad
 double precision :: gauss_nodeFrac(0:2)
 double precision :: gauss_weights(0:2)
 gauss_nodeFrac = (/ (1.d0-(3.d0/5.d0)**(0.5d0))/2.d0,0.5d0,(1.d0+(3.d0/5.d0)**(0.5d0))/2.d0 /)

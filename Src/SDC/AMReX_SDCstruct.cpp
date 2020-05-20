@@ -46,13 +46,16 @@ SDCstruct::SDCstruct(int Nnodes_in,int Npieces_in, MultiFab& sol_in)
   for (int sdc_m = 0; sdc_m < Nnodes; sdc_m++)
     {
       sol[sdc_m].define(ba, dm, Ncomp, Nghost);
-      res[sdc_m].define(ba, dm, Ncomp, Nghost);
+      //      res[sdc_m].define(ba, dm, Ncomp, Nghost);
+      res[sdc_m].define(ba, dm, Ncomp, 0);
       for (int i = 0; i < Npieces; i++)
 	{
-	  f[i][sdc_m].define(ba, dm, Ncomp, Nghost);
+	  //	  f[i][sdc_m].define(ba, dm, Ncomp, Nghost);
+	  f[i][sdc_m].define(ba, dm, Ncomp, 0);
 	}
       if (Npieces == 3)
-	Ithree[sdc_m].define(ba, dm, Ncomp, Nghost);      
+	Ithree[sdc_m].define(ba, dm, Ncomp, 0);      
+      //	Ithree[sdc_m].define(ba, dm, Ncomp, Nghost);      
     }
   
 }

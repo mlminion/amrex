@@ -37,11 +37,11 @@ void SDC_advance(MultiFab& phi_old,
 
   Real qij;
   Real current_time = time;
-  const BoxArray &ba=phi_old.boxArray();
-  const DistributionMapping &dm=phi_old.DistributionMap();
+  //  const BoxArray &ba=phi_old.boxArray();
+  //  const DistributionMapping &dm=phi_old.DistributionMap();
 
   // Copy old phi into first SDC node
-  MultiFab::Copy(SDC.sol[0],phi_old, 0, 0, 1, 2);
+  MultiFab::Copy(SDC.sol[0],phi_old, 0, 0, 1, phi_old.nGrow());
 
   // Fill the ghost cells of each grid from the other grids
   // includes periodic domain boundaries
@@ -80,13 +80,13 @@ void SDC_advance(MultiFab& phi_old,
         
       //        current_time = time+dt*nodeFrac[sdc_n];
         current_time = time+dt*SDC.qnodes[sdc_n];
-      //MultiFab::Copy(SDC.f[0][sdc_n],SDC.f[0][0], 0, 0, 1, 0);
+	MultiFab::Copy(SDC.sol[sdc_n],SDC.sol[0], 0, 0, 1, SDC.sol[0].nGrow());
         // Subsequent Calculation doesn't need BC conditions
 	SDC_feval(flux,geom,bc,SDC,a,d,r,face_bcoef,prod_stor,sdc_n,0,current_time, epsilon, k_freq, kappa, Nprob,Lord);
 
-      MultiFab::Copy(SDC.f[1][sdc_n],SDC.f[1][0], 0, 0, 1, 0);
+	MultiFab::Copy(SDC.f[1][sdc_n],SDC.f[1][0], 0, 0, 1, SDC.f[1][0].nGrow());
       if (SDC.Npieces==3)
-	MultiFab::Copy(SDC.f[2][sdc_n],SDC.f[2][0], 0, 0, 1, 0);      
+	MultiFab::Copy(SDC.f[2][sdc_n],SDC.f[2][0], 0, 0, 1, SDC.f[2][0].nGrow());      
     }
 
 
@@ -98,15 +98,15 @@ void SDC_advance(MultiFab& phi_old,
       SDC.SDC_rhs_integrals(dt);
         
       //  Substep over SDC nodes
-      for (int sdc_m = 0; sdc_m < SDC.Nnodes-1; sdc_m++)
+      for (sdc_m = 0; sdc_m < SDC.Nnodes-1; sdc_m++)
 	{
-	  amrex::Print() << "sweep " << k << ", substep " << sdc_m+1 <<"---";
+	  amrex::Print() << "sweep " << k << ", substep " << sdc_m+1 <<"---\n";
         
 	  // use phi_new as rhs and fill it with terms at this iteration
 	  SDC.SDC_rhs_k_plus_one(phi_new,dt,sdc_m);
 	  
 	  // get the best initial guess for implicit solve
-	  MultiFab::Copy(SDC.sol[sdc_m+1],phi_new, 0, 0, 1, 2);
+	  MultiFab::Copy(SDC.sol[sdc_m+1],phi_new, 0, 0, 1, phi_new.nGrow());
 	  for ( MFIter mfi(SDC.sol[sdc_m+1]); mfi.isValid(); ++mfi )
 	    {
 	      //	      const Box& bx = mfi.validbox();
@@ -139,7 +139,7 @@ void SDC_advance(MultiFab& phi_old,
 	if (SDC.Npieces==3)
 	  {
 	    // Build rhs for 2nd solve
-	    MultiFab::Copy(phi_new, SDC.sol[sdc_m+1],0, 0, 1, 2);
+	    MultiFab::Copy(phi_new, SDC.sol[sdc_m+1],0, 0, 1, SDC.sol[sdc_m+1].nGrow());
 	    
 	    // Add in the part for the 2nd implicit term to rhs
 	    SDC.SDC_rhs_misdc(phi_new,dt,sdc_m);
@@ -177,7 +177,7 @@ void SDC_advance(MultiFab& phi_old,
     
     
   // Return the last node in phi_new
-  MultiFab::Copy(phi_new, SDC.sol[SDC.Nnodes-1], 0, 0, 1, 2);
+  MultiFab::Copy(phi_new, SDC.sol[SDC.Nnodes-1], 0, 0, 1, SDC.sol[SDC.Nnodes-1].nGrow());
     
     
 
@@ -197,8 +197,8 @@ void SDC_feval(std::array<MultiFab, AMREX_SPACEDIM>& flux,
       If npiece = -1, do all the pieces */
    
     
-  const BoxArray &ba=SDC.sol[0].boxArray();
-  const DistributionMapping &dm=SDC.sol[0].DistributionMap();
+  //  const BoxArray &ba=SDC.sol[0].boxArray();
+  //  const DistributionMapping &dm=SDC.sol[0].DistributionMap();
 
   const Box& domain_bx = geom.Domain();
   const Real* dx = geom.CellSize();
@@ -264,7 +264,7 @@ void SDC_fcomp(MultiFab& rhs,
   const Real* dx = geom.CellSize();
   Real qij;
   Real t;
-  int numV;
+  int numV=0;
     
     // relative and absolute tolerances for linear solve
   const Real tol_rel = 1.0e-12;
@@ -275,17 +275,17 @@ void SDC_fcomp(MultiFab& rhs,
     Real corrnorm;
   // Make some space for iteration stuff
   MultiFab corr(ba, dm, 1, 2);
-  MultiFab resid(ba, dm, 1, 2);
+  MultiFab resid(ba, dm, 1, 0);
   MultiFab eval_storage(ba, dm, 1, 0);
     
  // Temp storage for checking code
-    MultiFab temp_resid(ba, dm, 1, 2);
-    MultiFab temp_corr(ba, dm, 1, 2);
-    MultiFab temp_fab(ba, dm, 1, 2);
-    MultiFab temp_zero(ba, dm, 1, 1);
-    MultiFab temp_err(ba, dm, 1, 2);
-    MultiFab temp_noghost(ba, dm, 1, 0);
-    MultiFab temp_oneghost(ba, dm, 1, 1);
+  //    MultiFab temp_resid(ba, dm, 1, 2);
+  //    MultiFab temp_corr(ba, dm, 1, 2);
+  //    MultiFab temp_fab(ba, dm, 1, 2);
+  //    MultiFab temp_err(ba, dm, 1, 2);
+  //    MultiFab temp_noghost(ba, dm, 1, 0);
+  //    MultiFab temp_oneghost(ba, dm, 1, 1);
+  MultiFab temp_zero(ba, dm, 1, 1);
     temp_zero.setVal(0.0); temp_zero.setBndry(0);
     
     
@@ -365,7 +365,7 @@ void SDC_fcomp(MultiFab& rhs,
 	      amrex::Print() << "Reached tolerance: resk iter " << resk << ",  residual norm " << resnorm << "\n";
 	      break;
             }
-	    amrex::Print() << "iter " << resk << ",  residual norm " << resnorm << ",  numV " << numV << "\n";
+
             
 
 	    mlabec.setLevelBC(0,&temp_zero); 
@@ -378,6 +378,7 @@ void SDC_fcomp(MultiFab& rhs,
 	    mlmg.solve({&corr}, {&resid}, tol_rel, tol_abs);
 	    numV=mlmg.getNumIters();
 	    totV=totV+numV;
+	    amrex::Print() << "iter " << resk << ",  residual norm " << resnorm << ",  numV " << numV << "\n";	    
             /////////////////////////////////////////////////////////////////
             // SMOOTHER
             /////////////////////////////////////////////////////////////////

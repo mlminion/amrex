@@ -65,8 +65,10 @@ void main_main ()
     pp.query("d",d);
     pp.query("r",r);
     pp.query("Nprob",Nprob);
-    int Lord=222;
+    int Lord=444;
     pp.query("Lord",Lord);
+    int MGord=444;
+    pp.query("MGord",MGord);
     
     // Manufactured solution parameters
     //    Real k_freq =3.14159265358979323846;
@@ -244,7 +246,7 @@ void main_main ()
   //  MLABecLaplacian mlabec({geom}, {ba}, {dm}, info);
   Kerrek mlabec({geom}, {ba}, {dm}, info);
   // order of stencil
-  int linop_maxorder = 4; // Change this?
+  int linop_maxorder = MGord/111; // Change this?
   mlabec.setMaxOrder(linop_maxorder);
   
   // build array of boundary conditions needed by MLABecLaplacian
