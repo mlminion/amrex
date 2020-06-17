@@ -9,7 +9,8 @@
 
 namespace amrex {
 
-MLCellABecLap::MLCellABecLap ()
+MLCellABecLap::MLCellABecLap (int a_opOrder)
+    : MLCellLinOp(a_opOrder)
 {
 }
 

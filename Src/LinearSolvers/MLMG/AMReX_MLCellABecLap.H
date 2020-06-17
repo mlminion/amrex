@@ -13,7 +13,7 @@ public:
     friend class MLMG;
     friend class MLCGSolver;
 
-    MLCellABecLap ();
+    MLCellABecLap (int a_opOrder = 222);
     virtual ~MLCellABecLap ();
 
     MLCellABecLap (const MLCellABecLap&) = delete;

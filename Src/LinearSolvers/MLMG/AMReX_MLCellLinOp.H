@@ -13,7 +13,7 @@ public:
     friend class MLMG;
     friend class MLCGSolver;
 
-    MLCellLinOp ();
+    MLCellLinOp (int a_opOrder = 222);
     virtual ~MLCellLinOp ();
 
     MLCellLinOp (const MLCellLinOp&) = delete;
@@ -26,6 +26,8 @@ public:
                  const Vector<DistributionMapping>& a_dmap,
                  const LPInfo& a_info = LPInfo(),
                  const Vector<FabFactory<FArrayBox> const*>& a_factory = {});
+   
+    virtual void fourthOrderBCFill (MultiFab& in, MultiFab& bdry_values);
 
     virtual void setLevelBC (int amrlev, const MultiFab* levelbcdata) final override;
 
@@ -89,7 +91,7 @@ public:
     // software counters for performance analysis
     static Counters perf_counters;
 #endif
-
+    // Used for BC
     virtual bool isCrossStencil () const { return true; }
     virtual bool isTensorOp () const { return false; }
 
@@ -98,7 +100,7 @@ public:
 
     virtual void applyBC (int amrlev, int mglev, MultiFab& in, BCMode bc_mode, StateMode s_mode,
                           const MLMGBndry* bndry=nullptr, bool skip_fillboundary=false) const;
-
+    
     BoxArray makeNGrids (int grid_size) const;
 
     virtual void restriction (int, int, MultiFab& crse, MultiFab& fine) const override;

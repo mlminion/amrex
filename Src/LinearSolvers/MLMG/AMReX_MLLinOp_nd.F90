@@ -30,10 +30,11 @@ module amrex_mllinop_nd_module
 contains
 
   subroutine amrex_mllinop_apply_bc (lo, hi, phi, hlo, hhi, mask, mlo, mhi, &
-       cdir, bct, bcl, bcval, blo, bhi, maxorder, dxinv, inhomog, nc, cross) &
+       cdir, bct, bcl, bcval, blo, bhi, maxorder, dxinv, inhomog, nc, cross, op_order) &
        bind(c,name='amrex_mllinop_apply_bc')
     integer, dimension(3), intent(in) :: lo, hi, hlo, hhi, mlo, mhi, blo, bhi
     integer, value, intent(in) :: cdir, bct, maxorder, inhomog, nc, cross
+    integer, value, intent(in) :: op_order
     real(amrex_real), value, intent(in) :: bcl
     real(amrex_real), intent(in) :: dxinv(3)
     real(amrex_real), intent(inout) ::  phi (hlo(1):hhi(1),hlo(2):hhi(2),hlo(3):hhi(3),nc)
@@ -41,11 +42,15 @@ contains
     real(amrex_real), intent(in   ) :: bcval(blo(1):bhi(1),blo(2):bhi(2),blo(3):bhi(3),nc)
 
     integer :: i, j, k, idim, lenx, m
-    logical :: inhomogeneous
+    logical :: inhomogeneous, checkLord
     real(amrex_real) ::    x(-1:maxorder-2)
     real(amrex_real) :: coef(-1:maxorder-2), coef2(-maxorder+2:1)
     real(amrex_real), parameter :: xInt = -0.5D0
     real(amrex_real) :: fac
+    ! vector for high order corners.
+    real(amrex_real) ::    x_ex(0:3)
+    real(amrex_real) ::    coef_long_lo(0:3),coef_short_lo(0:3)
+    real(amrex_real) ::    coef_long_hi(0:3),coef_short_hi(0:3)
 
     integer :: n
 
@@ -135,10 +140,23 @@ contains
              do    k = lo(3), hi(3)
                 do j = lo(2), hi(2)
                    if (mask(lo(1)-1,j,k) .gt. 0) then
-                      phi(lo(1)-1,j,k,n) = sum(phi(lo(1):lo(1)+lenx,j,k,n)*coef(0:lenx))
-                      if (inhomogeneous) then
-                         phi(lo(1)-1,j,k,n) = phi(lo(1)-1,j,k,n) + bcval(lo(1)-1,j,k,n)*coef(-1)
-                      end if
+                        if (op_order .eq. 244) then
+                              phi(lo(1)-1,j,k,n) = (-13.d0*phi(lo(1),j,k,n)+ &
+                                                    5.d0*phi(lo(1)+1,j,k,n)-phi(lo(1)+2,j,k,n))/3.d0
+
+                               if (inhomogeneous) then
+                                    phi(lo(1)-1,j,k,n) = phi(lo(1)-1,j,k,n) + (12.d0*bcval(lo(1)-1,j,k,n))/3.d0
+                               end if
+
+                               phi(lo(1)-2,j,k,n) = 4.d0*phi(lo(1)-1,j,k,n)-6.d0*phi(lo(1),j,k,n)+ &
+                                                    4.d0*phi(lo(1)+1,j,k,n)-phi(lo(1)+2,j,k,n)
+                        elseif (op_order .eq. 222) then
+
+                             phi(lo(1)-1,j,k,n) = sum(phi(lo(1):lo(1)+lenx,j,k,n)*coef(0:lenx))
+                             if (inhomogeneous) then
+                                phi(lo(1)-1,j,k,n) = phi(lo(1)-1,j,k,n) + bcval(lo(1)-1,j,k,n)*coef(-1)
+                             end if
+                        endif
                    end if
                 end do
              end do
@@ -146,10 +164,20 @@ contains
              do    k = lo(3), hi(3)
                 do j = lo(2), hi(2)
                    if (mask(hi(1)+1,j,k) .gt. 0) then
-                      phi(hi(1)+1,j,k,n) = sum(phi(hi(1)-lenx:hi(1),j,k,n)*coef2(-lenx:0))
-                      if (inhomogeneous) then
-                         phi(hi(1)+1,j,k,n) = phi(hi(1)+1,j,k,n) + bcval(hi(1)+1,j,k,n)*coef2(1)
-                      end if
+                        if (op_order .eq. 244) then
+                            phi(hi(1)+1,j,k,n) = (-13.d0*phi(hi(1),j,k,n)+ &
+                                                5.d0*phi(hi(1)-1,j,k,n)-phi(hi(1)-2,j,k,n))/3.d0
+                            if (inhomogeneous) then
+                                phi(hi(1)+1,j,k,n) = phi(hi(1)+1,j,k,n) + (12.d0*bcval(hi(1)+1,j,k,n))/3.d0
+                            end if
+                            phi(hi(1)+2,j,k,n) = 4.d0*phi(hi(1)+1,j,k,n)-6.d0*phi(hi(1),j,k,n)+ &
+                                                4.d0*phi(hi(1)-1,j,k,n)-phi(hi(1)-2,j,k,n)
+                        elseif (op_order .eq. 222) then
+                             phi(hi(1)+1,j,k,n) = sum(phi(hi(1)-lenx:hi(1),j,k,n)*coef2(-lenx:0))
+                             if (inhomogeneous) then
+                               phi(hi(1)+1,j,k,n) = phi(hi(1)+1,j,k,n) + bcval(hi(1)+1,j,k,n)*coef2(1)
+                             end if
+                        endif
                    end if
                 end do
              end do
@@ -158,10 +186,22 @@ contains
              do    k = lo(3), hi(3)
                 do i = lo(1), hi(1)
                    if (mask(i,lo(2)-1,k) .gt. 0) then
-                      phi(i,lo(2)-1,k,n) = sum(phi(i,lo(2):lo(2)+lenx,k,n)*coef(0:lenx))
-                      if (inhomogeneous) then
-                         phi(i,lo(2)-1,k,n) = phi(i,lo(2)-1,k,n) + bcval(i,lo(2)-1,k,n)*coef(-1)
-                      end if
+                        if (op_order .eq. 244) then
+                            phi(i,lo(2)-1,k,n) = (-13.d0*phi(i,lo(2),k,n)+ &
+                                                5.d0*phi(i,lo(2)+1,k,n)-phi(i,lo(2)+2,k,n))/3.d0
+
+                            if (inhomogeneous) then
+                                phi(i,lo(2)-1,k,n) = phi(i,lo(2)-1,k,n) + (12.d0*bcval(i,lo(2)-1,k,n))/3.d0
+                            end if
+
+                            phi(i,lo(2)-2,k,n) = 4.d0*phi(i,lo(2)-1,k,n)-6.d0*phi(i,lo(2),k,n)+ &
+                                                4.d0*phi(i,lo(2)+1,k,n)-phi(i,lo(2)+2,k,n)
+                        elseif (op_order .eq. 222) then
+                             phi(i,lo(2)-1,k,n) = sum(phi(i,lo(2):lo(2)+lenx,k,n)*coef(0:lenx))
+                             if (inhomogeneous) then
+                                phi(i,lo(2)-1,k,n) = phi(i,lo(2)-1,k,n) + bcval(i,lo(2)-1,k,n)*coef(-1)
+                             end if
+                        endif
                    end if
                 end do
              end do
@@ -169,22 +209,47 @@ contains
              do    k = lo(3), hi(3)
                 do i = lo(1), hi(1)
                    if (mask(i,hi(2)+1,k) .gt. 0) then
-                      phi(i,hi(2)+1,k,n) = sum(phi(i,hi(2)-lenx:hi(2),k,n)*coef2(-lenx:0))
-                      if (inhomogeneous) then
-                         phi(i,hi(2)+1,k,n) = phi(i,hi(2)+1,k,n) + bcval(i,hi(2)+1,k,n)*coef2(1)
-                      end if
+                        if (op_order .eq. 244) then
+                            phi(i,hi(2)+1,k,n) = (-13.d0*phi(i,hi(2),k,n)+ &
+                                                5.d0*phi(i,hi(2)-1,k,n)-phi(i,hi(2)-2,k,n))/3.d0
+
+                            if (inhomogeneous) then
+                                phi(i,hi(2)+1,k,n) = phi(i,hi(2)+1,k,n) + (12.d0*bcval(i,hi(2)+1,k,n))/3.d0
+                            end if
+
+                            phi(i,hi(2)+2,k,n) = 4.d0*phi(i,hi(2)+1,k,n)-6.d0*phi(i,hi(2),k,n)+ &
+                                                4.d0*phi(i,hi(2)-1,k,n)-phi(i,hi(2)-2,k,n)
+                        elseif (op_order .eq. 222) then
+                             phi(i,hi(2)+1,k,n) = sum(phi(i,hi(2)-lenx:hi(2),k,n)*coef2(-lenx:0))
+                             if (inhomogeneous) then
+                                phi(i,hi(2)+1,k,n) = phi(i,hi(2)+1,k,n) + bcval(i,hi(2)+1,k,n)*coef2(1)
+                             end if
+                        endif
                    end if
                 end do
              end do
 #if (AMREX_SPACEDIM == 3)
+    ! THIS IS UPDATED
           case (zlo_dir)
              do    j = lo(2), hi(2)
                 do i = lo(1), hi(1)
                    if (mask(i,j,lo(3)-1) .gt. 0) then
-                      phi(i,j,lo(3)-1,n) = sum(phi(i,j,lo(3):lo(3)+lenx,n)*coef(0:lenx))
-                      if (inhomogeneous) then
-                         phi(i,j,lo(3)-1,n) = phi(i,j,lo(3)-1,n) + bcval(i,j,lo(3)-1,n)*coef(-1)
-                      end if
+                        if (op_order .eq. 244) then
+                            phi(i,j,lo(3)-1,n) = (-13.d0*phi(i,j,lo(3),n)+ &
+                                                5.d0*phi(i,j,lo(3)+1,n)-phi(i,j,lo(3)+2,n))/3.d0
+
+                            if (inhomogeneous) then
+                                phi(i,j,lo(3)-1,n) = phi(i,j,lo(3)-1,n) + (12.d0*bcval(i,j,lo(3)-1,n))/3.d0
+                            end if
+
+                            phi(i,j,lo(3)-2,n) = 4.d0*phi(i,j,lo(3)-1,n)-6.d0*phi(i,j,lo(3),n)+ &
+                                                4.d0*phi(i,j,lo(3)+1,n)-phi(i,j,lo(3)+2,n)
+                        elseif (op_order .eq. 222) then
+                             phi(i,j,lo(3)-1,n) = sum(phi(i,j,lo(3):lo(3)+lenx,n)*coef(0:lenx))
+                             if (inhomogeneous) then
+                                phi(i,j,lo(3)-1,n) = phi(i,j,lo(3)-1,n) + bcval(i,j,lo(3)-1,n)*coef(-1)
+                             end if
+                        endif
                    end if
                 end do
              end do
@@ -192,10 +257,22 @@ contains
              do    j = lo(2), hi(2)
                 do i = lo(1), hi(1)
                    if (mask(i,j,hi(3)+1) .gt. 0) then
-                      phi(i,j,hi(3)+1,n) = sum(phi(i,j,hi(3)-lenx:hi(3),n)*coef2(-lenx:0))
-                      if (inhomogeneous) then
-                         phi(i,j,hi(3)+1,n) = phi(i,j,hi(3)+1,n) + bcval(i,j,hi(3)+1,n)*coef2(1)
-                      end if
+                        if (op_order .eq. 244) then
+                            phi(i,j,hi(3)+1,n) = (-13.d0*phi(i,j,hi(3),n)+ &
+                                                5.d0*phi(i,j,hi(3)-1,n)-phi(i,j,hi(3)-2,n))/3.d0
+
+                            if (inhomogeneous) then
+                                phi(i,j,hi(3)+1,n) = phi(i,j,hi(3)+1,n) + (12.d0*bcval(i,j,hi(3)+1,n))/3.d0
+                            end if
+
+                            phi(i,j,hi(3)+2,n) = 4.d0*phi(i,j,hi(3)+1,n)-6.d0*phi(i,j,hi(3),n)+ &
+                                                4.d0*phi(i,j,hi(3)-1,n)-phi(i,j,hi(3)-2,n)
+                        elseif (op_order .eq. 222) then
+                             phi(i,j,hi(3)+1,n) = sum(phi(i,j,hi(3)-lenx:hi(3),n)*coef2(-lenx:0))
+                             if (inhomogeneous) then
+                                phi(i,j,hi(3)+1,n) = phi(i,j,hi(3)+1,n) + bcval(i,j,hi(3)+1,n)*coef2(1)
+                             end if
+                        endif
                    end if
                 end do
              end do
@@ -208,40 +285,124 @@ contains
        end if
 
        ! Fill corners with averages for non-cross stencil
+if (op_order == 222) then
+    checkLord = (cross .eq. 0)
+else
+    checkLord = inhomogeneous !why?
+endif
 #if (AMREX_SPACEDIM > 1)
-       if (cross .eq. 0) then
+
+! previously cross .eq. 0 // Need Lord to make inhomogeneous param
+       if (checkLord) then
           ! The iteration over faces is always in the order of xlo, ylo, zlo, xhi, yhi and zhi.
 
+do m=0,3
+    x_ex(m) = m + 0.5d0
+end do
+
+call polyInterpCoeff(-0.5d0, x_ex, 4, coef_short_lo)
+call polyInterpCoeff(-1.5d0, x_ex, 4, coef_long_lo)
+
+do m = 0, 3
+! print*, coef_long_lo(m)
+coef_short_hi(m) = coef_short_lo(3-m)
+coef_long_hi(m) = coef_long_lo(3-m)
+end do
+! Far corner doesn't see averaging effect from (2,1) ghost cells. MAY NOT WORK ON MULTIPLE LEVELS
+!print*, mlo(1), " ", mhi(1),  " ", mlo(2), " ", mhi(2)
           ! Corners in XY plane
           if (cdir==xlo_dir .or. cdir==ylo_dir) then
              do k = lo(3), hi(3)
-                phi(lo(1)-1,lo(2)-1,k,n) = & 
-                     0.5d0*(2.d0*phi(lo(1),lo(2)-1,k,n) - phi(lo(1)+1,lo(2)-1,k,n)) + &
-                     0.5d0*(2.d0*phi(lo(1)-1,lo(2),k,n) - phi(lo(1)-1,lo(2)+1,k,n))
+! need to make more robust
+                if (op_order .eq. 244) then
+                    phi(lo(1)-1,lo(2)-1,k,n) = 0.5d0*(sum(phi(lo(1):lo(1)+3,lo(2)-1,k,n)*coef_short_lo(0:3))) + &
+                                0.5d0*(sum(phi(lo(1)-1,lo(2):lo(2)+3,k,n)*coef_short_lo(0:3)))
+
+                    phi(lo(1)-2,lo(2)-1,k,n) = 0.5d0*(sum(phi(lo(1):lo(1)+3,lo(2)-1,k,n)*coef_long_lo(0:3))) + &
+                                0.5d0*(sum(phi(lo(1)-2,lo(2):lo(2)+3,k,n)*coef_short_lo(0:3)))
+
+                    phi(lo(1)-1,lo(2)-2,k,n) = 0.5d0*(sum(phi(lo(1):lo(1)+3,lo(2)-2,k,n)*coef_short_lo(0:3))) + &
+                                0.5d0*(sum(phi(lo(1)-1,lo(2):lo(2)+3,k,n)*coef_long_lo(0:3)))
+
+                    phi(lo(1)-2,lo(2)-2,k,n) = 0.5d0*(sum(phi(lo(1):lo(1)+3,lo(2)-2,k,n)*coef_long_lo(0:3))) + &
+                                0.5d0*(sum(phi(lo(1)-2,lo(2):lo(2)+3,k,n)*coef_long_lo(0:3)))
+                elseif (op_order .eq. 222) then
+                    phi(lo(1)-1,lo(2)-1,k,n) = &
+                         0.5d0*(2.d0*phi(lo(1),lo(2)-1,k,n) - phi(lo(1)+1,lo(2)-1,k,n)) + &
+                         0.5d0*(2.d0*phi(lo(1)-1,lo(2),k,n) - phi(lo(1)-1,lo(2)+1,k,n))
+                endif
              end do
           end if
           if (cdir==xhi_dir .or. cdir==ylo_dir) then
              do k = lo(3), hi(3)
-                phi(hi(1)+1,lo(2)-1,k,n) = & 
-                     0.5d0*(2.d0*phi(hi(1),lo(2)-1,k,n) - phi(hi(1)-1,lo(2)-1,k,n)) + &
-                     0.5d0*(2.d0*phi(hi(1)+1,lo(2),k,n) - phi(hi(1)+1,lo(2)+1,k,n))
+                if (op_order .eq. 244) then
+                    phi(hi(1)+1,lo(2)-1,k,n) = 0.5d0*(sum(phi(hi(1)-3:hi(1),lo(2)-1,k,n)*coef_short_hi(0:3))) + &
+                                0.5d0*(sum(phi(hi(1)+1,lo(2):lo(2)+3,k,n)*coef_short_lo(0:3)))
+
+                    phi(hi(1)+2,lo(2)-1,k,n) = 0.5d0*(sum(phi(hi(1)-3:hi(1),lo(2)-1,k,n)*coef_long_hi(0:3))) + &
+                                0.5d0*(sum(phi(hi(1)+2,lo(2):lo(2)+3,k,n)*coef_short_lo(0:3)))
+
+                    phi(hi(1)+1,lo(2)-2,k,n) = 0.5d0*(sum(phi(hi(1)-3:hi(1),lo(2)-2,k,n)*coef_short_hi(0:3))) + &
+                                0.5d0*(sum(phi(hi(1)+1,lo(2):lo(2)+3,k,n)*coef_long_lo(0:3)))
+
+                    phi(hi(1)+2,lo(2)-2,k,n) = 0.5d0*(sum(phi(hi(1)-3:hi(1),lo(2)-2,k,n)*coef_long_hi(0:3))) + &
+                                0.5d0*(sum(phi(hi(1)+2,lo(2):lo(2)+3,k,n)*coef_long_lo(0:3)))
+                elseif (op_order .eq. 222) then
+                   phi(hi(1)+1,lo(2)-1,k,n) = &
+                        0.5d0*(2.d0*phi(hi(1),lo(2)-1,k,n) - phi(hi(1)-1,lo(2)-1,k,n)) + &
+                        0.5d0*(2.d0*phi(hi(1)+1,lo(2),k,n) - phi(hi(1)+1,lo(2)+1,k,n))
+                endif
              end do
           end if
           if (cdir==xlo_dir .or. cdir==yhi_dir) then
              do k = lo(3), hi(3)
-                phi(lo(1)-1,hi(2)+1,k,n) = & 
-                     0.5d0*(2.d0*phi(lo(1),hi(2)+1,k,n) - phi(lo(1)+1,hi(2)+1,k,n)) + &
-                     0.5d0*(2.d0*phi(lo(1)-1,hi(2),k,n) - phi(lo(1)-1,hi(2)-1,k,n))
+                if (op_order .eq. 244) then
+                    phi(lo(1)-1,hi(2)+1,k,n) = 0.5d0*(sum(phi(lo(1):lo(1)+3,hi(2)+1,k,n)*coef_short_lo(0:3))) + &
+                                0.5d0*(sum(phi(lo(1)-1,hi(2)-3:hi(2),k,n)*coef_short_hi(0:3)))
+
+                    phi(lo(1)-2,hi(2)+1,k,n) = 0.5d0*(sum(phi(lo(1):lo(1)+3,hi(2)+1,k,n)*coef_long_lo(0:3))) + &
+                                0.5d0*(sum(phi(lo(1)-2,hi(2)-3:hi(2),k,n)*coef_short_hi(0:3)))
+
+                    phi(lo(1)-1,hi(2)+2,k,n) = 0.5d0*(sum(phi(lo(1):lo(1)+3,hi(2)+2,k,n)*coef_short_lo(0:3))) + &
+                                0.5d0*(sum(phi(lo(1)-1,hi(2)-3:hi(2),k,n)*coef_long_hi(0:3)))
+
+                    phi(lo(1)-2,hi(2)+2,k,n) = 0.5d0*(sum(phi(lo(1):lo(1)+3,hi(2)+2,k,n)*coef_long_lo(0:3))) + &
+                                0.5d0*(sum(phi(lo(1)-2,hi(2)-3:hi(2),k,n)*coef_long_hi(0:3)))
+                elseif (op_order .eq. 222) then
+                    phi(lo(1)-1,hi(2)+1,k,n) = &
+                            0.5d0*(2.d0*phi(lo(1),hi(2)+1,k,n) - phi(lo(1)+1,hi(2)+1,k,n)) + &
+                            0.5d0*(2.d0*phi(lo(1)-1,hi(2),k,n) - phi(lo(1)-1,hi(2)-1,k,n))
+                endif
              end do
           end if
           if (cdir==xhi_dir .or. cdir==yhi_dir) then
              do k = lo(3), hi(3)
-                phi(hi(1)+1,hi(2)+1,k,n) = & 
-                     0.5d0*(2.d0*phi(hi(1),hi(2)+1,k,n) - phi(hi(1)-1,hi(2)+1,k,n)) + &
-                     0.5d0*(2.d0*phi(hi(1)+1,hi(2),k,n) - phi(hi(1)+1,hi(2)-1,k,n))
+                if (op_order .eq. 244) then
+                    phi(hi(1)+1,hi(2)+1,k,n) = 0.5d0*(sum(phi(hi(1)-3:hi(1),hi(2)+1,k,n)*coef_short_hi(0:3))) + &
+                                0.5d0*(sum(phi(hi(1)+1,hi(2)-3:hi(2),k,n)*coef_short_hi(0:3)))
+
+                    phi(hi(1)+2,hi(2)+1,k,n) = 0.5d0*(sum(phi(hi(1)-3:hi(1),hi(2)+1,k,n)*coef_long_hi(0:3))) + &
+                                0.5d0*(sum(phi(hi(1)+2,hi(2)-3:hi(2),k,n)*coef_short_hi(0:3)))
+
+                    phi(hi(1)+1,hi(2)+2,k,n) = 0.5d0*(sum(phi(hi(1)-3:hi(1),hi(2)+2,k,n)*coef_short_hi(0:3))) + &
+                                0.5d0*(sum(phi(hi(1)+1,hi(2)-3:hi(2),k,n)*coef_long_hi(0:3)))
+
+                    phi(hi(1)+2,hi(2)+2,k,n) = 0.5d0*(sum(phi(hi(1)-3:hi(1),hi(2)+2,k,n)*coef_long_hi(0:3))) + &
+                                0.5d0*(sum(phi(hi(1)+2,hi(2)-3:hi(2),k,n)*coef_long_hi(0:3)))
+                elseif (op_order .eq. 222) then
+
+               !  print*, phi(hi(1)+2,hi(2)+2,k,n)
+
+                    phi(hi(1)+1,hi(2)+1,k,n) = &
+                            0.5d0*(2.d0*phi(hi(1),hi(2)+1,k,n) - phi(hi(1)-1,hi(2)+1,k,n)) + &
+                            0.5d0*(2.d0*phi(hi(1)+1,hi(2),k,n) - phi(hi(1)+1,hi(2)-1,k,n))
+                endif
              end do
           end if
 #if (AMREX_SPACEDIM > 2)
+        ! We do not update this code for corners yet.
+
+
           ! Corners in YZ plane
           if (cdir==zlo_dir .or. cdir==ylo_dir) then
              do i = lo(1), hi(1)
@@ -298,6 +459,8 @@ contains
                 phi(hi(1)+1,j,hi(3)+1,n) = & 
                      0.5d0*(2.d0*phi(hi(1),j,hi(3)+1,n) - phi(hi(1)-1,j,hi(3)+1,n)) + &
                      0.5d0*(2.d0*phi(hi(1)+1,j,hi(3),n) - phi(hi(1)+1,j,hi(3)-1,n))
+
+
              end do
           end if
 #endif

@@ -118,7 +118,11 @@ void MLLinOp::Finalize ()
 #endif
 }
 
-MLLinOp::MLLinOp () {}
+MLLinOp::MLLinOp (int a_opOrder)
+    : m_opOrder(a_opOrder)
+{
+    AMREX_ALWAYS_ASSERT(m_opOrder==222 || m_opOrder==244);
+}
 
 MLLinOp::~MLLinOp () {}
 

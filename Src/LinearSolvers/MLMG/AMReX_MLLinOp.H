@@ -82,7 +82,7 @@ public:
     static void Initialize ();
     static void Finalize ();
 
-    MLLinOp ();
+    MLLinOp (int a_opOrder = 222);
     virtual ~MLLinOp ();
 
     MLLinOp (const MLLinOp&) = delete;
@@ -169,6 +169,8 @@ public:
     void setMaxOrder (int o) noexcept { maxorder = o; }
     int getMaxOrder () const noexcept { return maxorder; }
 
+    int opOrder () const {return m_opOrder;}
+    
     virtual BottomSolver getDefaultBottomSolver () const { return BottomSolver::bicgstab; }
     virtual int getNComp () const { return 1; }
     virtual int getNGrow () const { return 0; }
@@ -266,7 +268,10 @@ protected:
     int verbose = 0;
 
     int maxorder = 3;
+private:
+    int m_opOrder;
 
+public:
     int m_num_amr_levels;
     Vector<int> m_amr_ref_ratio;
 

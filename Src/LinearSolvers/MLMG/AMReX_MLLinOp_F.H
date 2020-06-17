@@ -13,7 +13,7 @@ extern "C" {
                                  const int cdir, const int bct, const amrex_real bcl,
                                  const amrex_real* bcval, const int* blo, const int* bhi,
                                  const int maxorder, const amrex_real* dxinv,
-                                 const int inhomog, const int nc, const int cross);
+                                 const int inhomog, const int nc, const int cross, const int op_order);
 
 #ifdef __cplusplus
 }

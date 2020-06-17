@@ -33,15 +33,30 @@ Nprob = 4 is periodic analysis of Nprob=1.
 The source code is located in the  directory Source.  To compile the example, cd to Exec and enter
 
 >make
+Or in parallel
+>make DIM=2 -j9
+Or with debugging
+>make DIM=2 DEBUG=TRUE -j9
 
 To run the example in Exec
 
 > ./main2d.gnu.ed inputs_2d
 Or
 > ./main2d.gnu.ex inputs_2d numGS=10 maxresk=1500 n_cell=256 max_grid_size=64 plot_int=0 relaxation_parameter=1.5 Nprob=3
+Or 
+> ./main2d.gnu.DEBUG.ex inputs_2d n_cell=256 MGord=244 max_grid_size=256 amrex.fpe_trap_invalid=1 numVcycle=15 Nprob=1 Nsweeps=12
 
 After completion, one can use amrvis to view the solution or errors.
 
+Working cases:
+Nprob=1, MGord=244-->n_cell=max_grid_size, GS smoother, no relaxation, more Nsweeps
+                  -->n_cell>=max_grid_size, Jacobi smoother, 1.5 relaxation, more Nsweeps
+
+Nprob=4-->MGord=222, n_cell>=max_grid_size, GS smoother, no relaxation
+       -->MGord=244, n_cell=max_grid_size, GS smoother, no relaxation
+       -->MGord=244, n_cell>=max_grid_size, Jacobi smoother, 1.5 relaxation
+
+Smoother and relaxation hardcoded at(near) 396 and 399 of AMReX_MLABecLaplacian.cpp.
 
 Files:  
 

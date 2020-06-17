@@ -26,10 +26,11 @@ class MLTensorOp
 {
 public:
 
-    MLTensorOp ();
+    MLTensorOp (int a_opOrder);
     MLTensorOp (const Vector<Geometry>& a_geom,
                 const Vector<BoxArray>& a_grids,
                 const Vector<DistributionMapping>& a_dmap,
+                int a_opOrder,
                 const LPInfo& a_info = LPInfo(),
                 const Vector<FabFactory<FArrayBox> const*>& a_factory = {});
     virtual ~MLTensorOp ();

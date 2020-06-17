@@ -6,7 +6,8 @@
 
 namespace amrex {
 
-MLCellLinOp::MLCellLinOp ()
+MLCellLinOp::MLCellLinOp (int a_opOrder)
+    : MLLinOp(a_opOrder)
 {
     m_ixtype = IntVect::TheCellVector();
 }
@@ -46,7 +47,8 @@ MLCellLinOp::defineAuxData ()
                                               1, 0, 0, ncomp);
         }
     }
-    
+
+    int op_order = opOrder();
     for (int amrlev = 0; amrlev < m_num_amr_levels; ++amrlev)
     {
         m_maskvals[amrlev].resize(m_num_mg_levels[amrlev]);
@@ -55,8 +57,9 @@ MLCellLinOp::defineAuxData ()
             for (OrientationIter oitr; oitr; ++oitr)
             {
                 const Orientation face = oitr();
-                const int ngrow = 1;
-                const int extent = isCrossStencil() ? 0 : 1; // extend to corners
+
+                const int ngrow = (op_order==222) ? 1 : 2; // Need opOrder
+                const int extent = (isCrossStencil() && opOrder()==222) ? 0 : 1; // extend to corners. Diff from Marc code
                 m_maskvals[amrlev][mglev][face].define(m_grids[amrlev][mglev],
                                                        m_dmap[amrlev][mglev],
                                                        m_geom[amrlev][mglev],
@@ -341,14 +344,33 @@ MLCellLinOp::smooth (int amrlev, int mglev, MultiFab& sol, const MultiFab& rhs,
                      bool skip_fillboundary) const
 {
     BL_PROFILE("MLCellLinOp::smooth()");
-    for (int redblack = 0; redblack < 2; ++redblack)
+    if ( opOrder() == 222)
     {
+        for (int redblack = 0; redblack < 2; ++redblack)
+        {
+            applyBC(amrlev, mglev, sol, BCMode::Homogeneous, StateMode::Solution,
+                    nullptr, skip_fillboundary);
+
+#ifdef AMREX_SOFT_PERF_COUNTERS
+            perf_counters.smooth(sol);
+#endif
+
+            Fsmooth(amrlev, mglev, sol, rhs, redblack);
+            skip_fillboundary = false;
+        }
+    }
+    else
+    {
+        // Redblack doesn't make sense with 4th order scheme.
+        int redblack = 0;
         applyBC(amrlev, mglev, sol, BCMode::Homogeneous, StateMode::Solution,
                 nullptr, skip_fillboundary);
+        
 #ifdef AMREX_SOFT_PERF_COUNTERS
         perf_counters.smooth(sol);
 #endif
         Fsmooth(amrlev, mglev, sol, rhs, redblack);
+
         skip_fillboundary = false;
     }
 }
@@ -439,7 +461,7 @@ MLCellLinOp::applyBC (int amrlev, int mglev, MultiFab& in, BCMode bc_mode, State
     BL_ASSERT(bndry != nullptr || bc_mode == BCMode::Homogeneous);
 
     const int ncomp = getNComp();
-    const int cross = isCrossStencil();
+    const int cross = (isCrossStencil() && (opOrder()==222));//Diff from Marc code
     const int tensorop = isTensorOp();
     if (!skip_fillboundary) {
         in.FillBoundary(0, ncomp, m_geom[amrlev][mglev].periodicity(),cross);
@@ -462,6 +484,8 @@ MLCellLinOp::applyBC (int amrlev, int mglev, MultiFab& in, BCMode bc_mode, State
     MFItInfo mfi_info;
     if (Gpu::notInLaunchRegion()) mfi_info.SetDynamic(true);
 
+    int op_order = opOrder();
+
     AMREX_ALWAYS_ASSERT_WITH_MESSAGE(cross || tensorop || Gpu::notInLaunchRegion(),
                                      "non-cross stencil not support for gpu");
 
@@ -476,8 +500,9 @@ MLCellLinOp::applyBC (int amrlev, int mglev, MultiFab& in, BCMode bc_mode, State
         const auto & bdlv = bcondloc.bndryLocs(mfi);
         const auto & bdcv = bcondloc.bndryConds(mfi);
 
-        if (cross || tensorop)
+        if ((cross || tensorop)&& (opOrder()==222))
         {
+// Shouldn't be here if opOrder=244, as 444 eval requires corners.
             for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
             {
                 const Orientation olo(idim,Orientation::low);
@@ -557,10 +582,20 @@ MLCellLinOp::applyBC (int amrlev, int mglev, MultiFab& in, BCMode bc_mode, State
                                        BL_TO_FORTRAN_ANYD(m),
                                        cdr, bct, bcl,
                                        BL_TO_FORTRAN_ANYD(fsfab),
-                                       maxorder, dxinv, flagbc, ncomp, cross);
+                                       maxorder, dxinv, flagbc, ncomp, cross, op_order);
+                // make sure corners are filled correctly in 244 case
             }
         }
     }
+}
+
+void
+MLCellLinOp::fourthOrderBCFill (MultiFab& in, MultiFab& bdry_values)
+{
+    BL_PROFILE("MLCellLinOp::fourthOrderBCFill()");
+    MLCellLinOp::setLevelBC(0, &bdry_values);
+    MLCellLinOp::applyBC (0,0, in, BCMode::Inhomogeneous, StateMode::Solution,
+             m_bndry_sol[0].get(), 0);
 }
 
 void

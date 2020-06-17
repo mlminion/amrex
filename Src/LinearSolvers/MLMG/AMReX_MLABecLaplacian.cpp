@@ -9,10 +9,12 @@ namespace amrex {
 MLABecLaplacian::MLABecLaplacian (const Vector<Geometry>& a_geom,
                                   const Vector<BoxArray>& a_grids,
                                   const Vector<DistributionMapping>& a_dmap,
+                                  int a_opOrder,
                                   const LPInfo& a_info,
                                   const Vector<FabFactory<FArrayBox> const*>& a_factory)
+    : MLCellABecLap(a_opOrder)
 {
-    define(a_geom, a_grids, a_dmap, a_info, a_factory);
+  define(a_geom, a_grids, a_dmap, a_info, a_factory);
 }
 
 void
@@ -240,7 +242,7 @@ MLABecLaplacian::Fapply (int amrlev, int mglev, MultiFab& out, const MultiFab& i
         AMREX_LAUNCH_HOST_DEVICE_LAMBDA ( bx, tbx,
         {
             mlabeclap_adotx(tbx, yfab, xfab, afab, AMREX_D_DECL(bxfab,byfab,bzfab),
-                            dxinv, ascalar, bscalar, ncomp);
+                            dxinv, ascalar, bscalar, ncomp, opOrder());
         });
     }
 }
@@ -331,6 +333,8 @@ MLABecLaplacian::Fsmooth (int amrlev, int mglev, MultiFab& sol, const MultiFab& 
 #ifdef _OPENMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
+    
+    FArrayBox phi_tmp;
     for (MFIter mfi(sol,mfi_info); mfi.isValid(); ++mfi)
     {
 	const auto& m0 = mm0.array(mfi);
@@ -364,9 +368,19 @@ MLABecLaplacian::Fsmooth (int amrlev, int mglev, MultiFab& sol, const MultiFab& 
         const auto& f5fab = f5.array(mfi);
 #endif
 #endif
+        
+        if (m_opOrder == 244)
+        {
+            phi_tmp.resize(grow(tbx,2),nc);
+            phi_tmp.copy(sol[mfi]);
+        }
+        const auto& phi_tmpfab = phi_tmp.array();
+        // Fix for GPU later...
 
         AMREX_LAUNCH_HOST_DEVICE_LAMBDA ( tbx, thread_box,
         {
+            if(opOrder() == 222)
+            {
             abec_gsrb(thread_box, solnfab, rhsfab, alpha, afab,
                       AMREX_D_DECL(dhx, dhy, dhz),
                       AMREX_D_DECL(bxfab, byfab, bzfab),
@@ -375,6 +389,22 @@ MLABecLaplacian::Fsmooth (int amrlev, int mglev, MultiFab& sol, const MultiFab& 
                       AMREX_D_DECL(f0fab,f2fab,f4fab),
                       AMREX_D_DECL(f1fab,f3fab,f5fab),
                       vbx, redblack, nc);
+            }
+            else if ((opOrder() == 244) && (AMREX_SPACEDIM == 2))
+            {
+                // abec_x_high, where x = jacobi or gsrb. Jacobi (currently) needs relaxation in periodic case.
+                abec_gsrb_high(thread_box, solnfab, rhsfab, alpha, dhx, dhy,
+                               afab, bxfab, byfab,
+                               m0, m1, m2, m3,
+                               vbx, nc, phi_tmpfab, 1.0); // last input is relaxation param
+                
+            }
+            else
+            {
+                Print() << "AMREX_SPACEDIM: " << AMREX_SPACEDIM << std::endl;
+                Print() << "mg ord: " << m_opOrder << std::endl;
+                Abort("Invalid m_opOrder or AMREX_SPACEDIM");
+            }
         });
     }
 }

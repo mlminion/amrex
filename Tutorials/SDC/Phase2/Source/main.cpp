@@ -63,9 +63,13 @@ void main_main ()
     pp.query("a",a);
     pp.query("d",d);
     pp.query("r",r);
+    // Read in the problem--see READ ME file
     pp.query("Nprob",Nprob);
+    // Read in Lord which is the order of the stencil (or residual) of the overall method
     int Lord=444;
     pp.query("Lord",Lord);
+    // Read in MGord which is the order of the intermediate 
+    // MLMG solver used to obtain an Lord order method
     int MGord=444;
     pp.query("MGord",MGord);
     
@@ -73,10 +77,9 @@ void main_main ()
     //    Real k_freq =3.14159265358979323846;
     Real k_freq =1.0;
     pp.query("k_freq",k_freq);    
-    Real epsilon = 0.25;//0.25;//0.25;
-    Real kappa = 2.0*d*pow(k_freq,2.0); // This choice leads to cancellation analytically. Doesn't matter now.
-    
-    
+    Real epsilon = 0.25;
+    Real kappa = 2.0*d*pow(k_freq,2.0); 
+
     // Set BC based on Nprob:
     for (int idim=0; idim < AMREX_SPACEDIM; ++idim) {
         if (Nprob<3) {
@@ -99,7 +102,7 @@ void main_main ()
             is_periodic[idim] = 0;  // Need this?
         }
     }
-    // Check that we have external dirichlet conditions in place.
+    // Check for external or internal(periodic) dirichlet conditions.
     for (int idim=0; idim < AMREX_SPACEDIM; ++idim) {
         if (!(bc_lo[idim] == EXT_DIR && bc_hi[idim] == EXT_DIR)) {
             if (!(bc_lo[idim] == INT_DIR && bc_hi[idim] == INT_DIR)) {
@@ -239,10 +242,10 @@ void main_main ()
   LPInfo info;
   
   // Implicit solve using MLABecLaplacian class
-  //  MLABecLaplacian mlabec({geom}, {ba}, {dm}, info);
-  Kerrek mlabec({geom}, {ba}, {dm}, info);
+
+  MLABecLaplacian mlabec({geom}, {ba}, {dm}, MGord, info);
   // order of stencil
-  int linop_maxorder = MGord/111; // Change this?
+  int linop_maxorder = (MGord==222) ? 2 : 4; //Could just be 4?
   mlabec.setMaxOrder(linop_maxorder);
   
   // build array of boundary conditions needed by MLABecLaplacian
@@ -291,24 +294,11 @@ void main_main ()
   // fill in the acoef MultiFab and load this into the solver
   acoef.setVal(1.0);
   mlabec.setACoeffs(0, acoef);
-    /*
-     // bcoef lives on faces so we make an array of face-centered MultiFabs
-     //   then we will in face_bcoef MultiFabs and load them into the solver.
-     std::array<MultiFab,AMREX_SPACEDIM> face_bcoef;
-     for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
-     {
-     const BoxArray& bamg = amrex::convert(acoef.boxArray(),
-     IntVect::TheDimensionVector(idim));
-     face_bcoef[idim].define(bamg, acoef.DistributionMap(), 1, 0);
-     face_bcoef[idim].setVal(1.0);
-     }
-     mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(face_bcoef));
-     */
     
     // Cell centered Beta values
     MultiFab BccCoef(ba, dm, 1, 2);
     
-    // Need to implement 4th order extrapolation; for now, we simply use that the use that this function is periodic.
+    
     for ( MFIter mfi(BccCoef); mfi.isValid(); ++mfi )
     {
         const Box& bx = mfi.growntilebox();
@@ -316,7 +306,8 @@ void main_main ()
                  BL_TO_FORTRAN_ANYD(BccCoef[mfi]),
                  geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&epsilon, &k_freq, &Nprob);
     }
-    BccCoef.FillBoundary();
+    // Need to implement 4th order extrapolation; for now, we simply use that the use that the Beta(B) function is periodic. IS it filled in DIR case?
+    BccCoef.FillBoundary(geom.periodicity());
 
     std::array<MultiFab,AMREX_SPACEDIM> face_bcoef;
    // Product Storage
@@ -342,9 +333,9 @@ void main_main ()
         face_bcoef[idim].FillBoundary(geom.periodicity()); // Shouldn't need this?
     }
 
-mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(face_bcoef));
+mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(face_bcoef)); // m_b_coeffs doesn't have ghost cells.
     // Need to be able to find the boundary conditions at a given time. We do this intialization a quick and dirty way. Would be better to utilize maskvals and oitr.
-    // Boundary values are stored in ghost cells in cross.
+    // Boundary values are stored in single ghost cell layer of cross.
     MultiFab bdry_values(ba, dm, 1, 1); bdry_values.setBndry(0);
     
     for ( MFIter mfi(bdry_values); mfi.isValid(); ++mfi )
@@ -353,13 +344,9 @@ mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(face_bcoef));
                          BL_TO_FORTRAN_ANYD(bdry_values[mfi]),
                          geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&time, &epsilon,&k_freq, &kappa,&Nprob);
     }
-/*    for ( MFIter mfi(bdry_values); mfi.isValid(); ++mfi )
-    {          const Box& bx = mfi.validbox();
-        print_multifab(BL_TO_FORTRAN_ANYD(phi_new[mfi]));
-    }*/
     
     
-    if (Nprob<3){ // Dirichlet case
+    if (Nprob<3){ // Dirichlet cases
     mlabec.fourthOrderBCFill(phi_new,bdry_values);
     }
     phi_new.FillBoundary(geom.periodicity());
@@ -384,150 +371,7 @@ mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(face_bcoef));
   mlmg.setCGVerbose(cg_verbose);
   
     
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////
- /*   /////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // 1s and 0s TESTING SPACE /////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////
     
-    MultiFab eval_storage(ba, dm, 1, 0);
-    MultiFab rhs(ba, dm, 1, 0);
-    MultiFab soln(ba, dm, 1, 2);
-    MultiFab approx_soln(ba, dm, 1, 2);
-    MultiFab bvalues(ba,dm,1,1);
-    
-    mlabec.setScalars(1.0, d);
-    
-    const Box& domain_bx = geom.Domain();
-   // const Real* dx = geom.CellSize();
-    Real zeroReal = 0.0;
-    int oneInt = 1;
-    
-    
-   /////////////////////////////////////////////////////
-   // SET SOLN VALUE
-   /////////////////////////////////////////////////////
-    for ( MFIter mfi(phi_new); mfi.isValid(); ++mfi )
-    {
-        const Box& bx = mfi.validbox();
-        init_phi(BL_TO_FORTRAN_BOX(bx),
-                 BL_TO_FORTRAN_ANYD(soln[mfi]),
-                 geom.CellSize(), geom.ProbLo(), geom.ProbHi(), &k_freq);
-    }
-    
-    
-    
-    ///////////////////////////////////////////////////////
-    // Intialize Boundary Values
-    ///////////////////////////////////////////////////////
-    bvalues.setVal(0.0);
-    
-    for ( MFIter mfi(bdry_values); mfi.isValid(); ++mfi )
-    {          const Box& bx = mfi.validbox();
-        fill_bdry_values(BL_TO_FORTRAN_BOX(bx),
-                         BL_TO_FORTRAN_ANYD(bvalues[mfi]),
-                         geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&time, &epsilon,&k_freq, &kappa);
-    }
-    
-    
-    
-    /////////////////////////////////////////////////////
-    // APPLY BC TO SOLN
-    /////////////////////////////////////////////////////
-    
-    
-    
-    
-    amrex::Print() << "Check 1"  << "\n";
-    
-    /////////////////////////////////////////////////////
-    // Find L^2,4,4 eval of soln (make sure to comment out correct piece of feval)
-    /////////////////////////////////////////////////////
-    for ( MFIter mfi(soln); mfi.isValid(); ++mfi )
-    {
-        const Box& bx = mfi.validbox();
-        SDC_feval_F(BL_TO_FORTRAN_BOX(bx),
-                    BL_TO_FORTRAN_BOX(domain_bx),
-                    BL_TO_FORTRAN_ANYD(soln[mfi]),
-                    BL_TO_FORTRAN_ANYD(flux[0][mfi]),
-                    BL_TO_FORTRAN_ANYD(flux[1][mfi]),
-#if (AMREX_SPACEDIM == 3)
-                    BL_TO_FORTRAN_ANYD(flux[2][mfi]),
-#endif
-                    BL_TO_FORTRAN_ANYD(eval_storage[mfi]),
-                    dx,&a,&d,&r,
-                    BL_TO_FORTRAN_ANYD(face_bcoef[0][mfi]),
-                    BL_TO_FORTRAN_ANYD(face_bcoef[1][mfi]),
-                    BL_TO_FORTRAN_ANYD(prod_stor[0][mfi]),
-                    BL_TO_FORTRAN_ANYD(prod_stor[1][mfi]),
-                    &oneInt, &zeroReal, &zeroReal, &zeroReal, &zeroReal);
-        
-    }
-    
-    /////////////////////////////////////////////////////////////////
-    // MAKE RHS = (I-L^2,4,4)soln
-    /////////////////////////////////////////////////////////////////
-    
-    rhs.setVal(0.0);
-    MultiFab::Saxpy(rhs,1.0,soln,0,0,1,0);
-    MultiFab::Saxpy(rhs,-1.0,eval_storage,0,0,1,0);
-    
-    ////////////////////////////////////////////////////////////////
-    // INITIAL GUESS FOR SOLN
-    ////////////////////////////////////////////////////////////////
-    
-    approx_soln.setVal(0.0);
-    
-    ////////////////////////////////////////////////////////////////
-    // SMOOTHING LOOP
-    ////////////////////////////////////////////////////////////////
-    for (int i =1;i<=10;i++){
-        
-    
-        ///////////////////////////////////////////////////////////////
-        // BC FOR APPROX
-        ///////////////////////////////////////////////////////////////
-      
-        
-        
-        // SMOOTH
-        mlabec.Fsmooth(0,0, approx_soln, rhs, 0);
-    
-    
-    }
-    
-    
-    
-    
-    ////////////////////////////////////////////////////
-    // PRINT MULTIFAB to SEE RESULT
-    ////////////////////////////////////////////////////
- //   for ( MFIter mfi(approx_soln); mfi.isValid(); ++mfi )
- //   {
- //       const Box& bx = mfi.validbox();
- //       print_multifab(BL_TO_FORTRAN_ANYD(approx_soln[mfi]));
- //   }
-    
-    
-    
-    //////////////////////////////////////////////////////
-    // ERROR NORM
-    //////////////////////////////////////////////////////
-    
-    MultiFab::Saxpy(approx_soln,-1.0,soln,0,0,1,0);
-    amrex::Print() << "Error norm is " << approx_soln.norm0()  << "\n";
-    
-    
-    // PAUSE AFTER RUNNING THIS AREA
-    std::cin.get();
-    
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // END 1s and 0s TESTING SPACE /////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////
-    
-    */
    // mlabec.prepareForSolve();
     
     

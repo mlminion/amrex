@@ -8,7 +8,8 @@ namespace {
     constexpr int kappa_num_mglevs = 1;
 }
 
-MLTensorOp::MLTensorOp ()
+MLTensorOp::MLTensorOp (int a_opOrder)
+    : MLABecLaplacian(a_opOrder)
 {
     MLABecLaplacian::setScalars(1.0,1.0);
 }
@@ -16,8 +17,10 @@ MLTensorOp::MLTensorOp ()
 MLTensorOp::MLTensorOp (const Vector<Geometry>& a_geom,
                         const Vector<BoxArray>& a_grids,
                         const Vector<DistributionMapping>& a_dmap,
+                        int a_opOrder,
                         const LPInfo& a_info,
                         const Vector<FabFactory<FArrayBox> const*>& a_factory)
+    : MLABecLaplacian(a_opOrder)
 {
     MLABecLaplacian::setScalars(1.0,1.0);
     define(a_geom, a_grids, a_dmap, a_info, a_factory);

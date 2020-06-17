@@ -14,10 +14,11 @@ class MLABecLaplacian
 {
 public:
 
-    MLABecLaplacian () {}
+    MLABecLaplacian (int a_opOrder) : MLCellABecLap(a_opOrder) {}
     MLABecLaplacian (const Vector<Geometry>& a_geom,
                      const Vector<BoxArray>& a_grids,
                      const Vector<DistributionMapping>& a_dmap,
+                     int a_opOrder = 222,
                      const LPInfo& a_info = LPInfo(),
                      const Vector<FabFactory<FArrayBox> const*>& a_factory = {});
     virtual ~MLABecLaplacian ();

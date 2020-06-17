@@ -15,7 +15,7 @@ void SDC_advance(MultiFab& phi_old,
 		 const Geometry& geom,
 		 const Vector<BCRec>& bc,
 		 MLMG&  mlmg,
-		 Kerrek& mlabec,
+		 MLABecLaplacian& mlabec,
 		 SDCstruct &SDC, Real a, Real d, Real r,
          std::array<MultiFab,AMREX_SPACEDIM>& face_bcoef,
 		 std::array<MultiFab,AMREX_SPACEDIM>& prod_stor, Real time, Real epsilon, Real k_freq, Real kappa, MultiFab& bdry_values, int Nprob,int Lord,int &totV)
@@ -37,8 +37,6 @@ void SDC_advance(MultiFab& phi_old,
 
   Real qij;
   Real current_time = time;
-  //  const BoxArray &ba=phi_old.boxArray();
-  //  const DistributionMapping &dm=phi_old.DistributionMap();
 
   // Copy old phi into first SDC node
   MultiFab::Copy(SDC.sol[0],phi_old, 0, 0, 1, phi_old.nGrow());
@@ -57,23 +55,16 @@ void SDC_advance(MultiFab& phi_old,
        
         mlabec.fourthOrderBCFill(SDC.sol[0],bdry_values);
     }
-    // Fill periodic values and interal ghost cells
+    // Fill periodic values and interal BC ghost cells
     SDC.sol[0].FillBoundary(geom.periodicity());
     
-
-  /*  for ( MFIter mfi(bdry_values); mfi.isValid(); ++mfi )
-    {          const Box& bx = mfi.validbox();
-        
-        print_multifab(BL_TO_FORTRAN_ANYD(SDC.sol[0][mfi]));
-    }*/
     // Fill non-periodic physical boundaries (doesn't do Dirichlet; probably only one ghost cell).
   // FillDomainBoundary(SDC.sol[0], geom, bc);
   
   //  Compute the first function value (Need boundary filled here at current time explicit).
   int sdc_m=0;
   SDC_feval(flux,geom,bc,SDC,a,d,r,face_bcoef,prod_stor,sdc_m,-1,time, epsilon, k_freq, kappa, Nprob,Lord);
-    
-    
+
   // Copy first function value to all nodes
   for (int sdc_n = 1; sdc_n < SDC.Nnodes; sdc_n++)
     {
@@ -81,12 +72,13 @@ void SDC_advance(MultiFab& phi_old,
       //        current_time = time+dt*nodeFrac[sdc_n];
         current_time = time+dt*SDC.qnodes[sdc_n];
 	MultiFab::Copy(SDC.sol[sdc_n],SDC.sol[0], 0, 0, 1, SDC.sol[0].nGrow());
-        // Subsequent Calculation doesn't need BC conditions
+        // Subsequent Calculation doesn't need BC conditions... fills out forcing term
 	SDC_feval(flux,geom,bc,SDC,a,d,r,face_bcoef,prod_stor,sdc_n,0,current_time, epsilon, k_freq, kappa, Nprob,Lord);
 
-	MultiFab::Copy(SDC.f[1][sdc_n],SDC.f[1][0], 0, 0, 1, SDC.f[1][0].nGrow());
+        MultiFab::Copy(SDC.f[1][sdc_n],SDC.f[1][0], 0, 0, 1,SDC.f[1][0].nGrow() );
       if (SDC.Npieces==3)
-	MultiFab::Copy(SDC.f[2][sdc_n],SDC.f[2][0], 0, 0, 1, SDC.f[2][0].nGrow());      
+	MultiFab::Copy(SDC.f[2][sdc_n],SDC.f[2][0], 0, 0, 1, SDC.f[2][0].nGrow());
+
     }
 
 
@@ -102,7 +94,7 @@ void SDC_advance(MultiFab& phi_old,
 	{
 	  amrex::Print() << "sweep " << k << ", substep " << sdc_m+1 <<"---\n";
         
-	  // use phi_new as rhs and fill it with terms at this iteration
+	  // use phi_new as rhs and fill (overwrite) it with terms at this iteration
 	  SDC.SDC_rhs_k_plus_one(phi_new,dt,sdc_m);
 	  
 	  // get the best initial guess for implicit solve
@@ -113,7 +105,6 @@ void SDC_advance(MultiFab& phi_old,
 	      qij = dt*SDC.Qimp[sdc_m][sdc_m+1];
 	      SDC.sol[sdc_m+1][mfi].saxpy(qij,SDC.f[1][sdc_m+1][mfi]);
 	    }
-     // SDC.sol[sdc_m+1].FillBoundary(geom.periodicity());
         // Get Implicit time value
         current_time = time+dt*SDC.qnodes[sdc_m+1];
 	
@@ -170,13 +161,9 @@ void SDC_advance(MultiFab& phi_old,
       
         
     }  // end sweeps loop
-    ///////////////////////////////////////////////////////
-    // PAUSE
-    ///////////////////////////////////////////////////////
-   // std::cin.get();
     
     
-  // Return the last node in phi_new
+  // Return the last node in SDC.sol
   MultiFab::Copy(phi_new, SDC.sol[SDC.Nnodes-1], 0, 0, 1, SDC.sol[SDC.Nnodes-1].nGrow());
     
     
@@ -247,7 +234,7 @@ void SDC_fcomp(MultiFab& rhs,
 	       const Vector<BCRec>& bc,
 	       SDCstruct &SDC,
 	       MLMG &mlmg,
-	       Kerrek& mlabec,	      
+	       MLABecLaplacian& mlabec,	      
 	       Real dt,Real a,Real d,Real r,
            std::array<MultiFab,AMREX_SPACEDIM>& face_bcoef,
            std::array<MultiFab,AMREX_SPACEDIM>& prod_stor,
@@ -301,7 +288,7 @@ void SDC_fcomp(MultiFab& rhs,
                              BL_TO_FORTRAN_ANYD(bdry_values[mfi]),
                              geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&time, &epsilon,&k_freq, &kappa, &Nprob);
         }
-        mlabec.fourthOrderBCFill(SDC.sol[sdc_m],bdry_values);
+      //  mlabec.fourthOrderBCFill(SDC.sol[sdc_m],bdry_values);
     }
     
     SDC.sol[sdc_m].FillBoundary(geom.periodicity());
