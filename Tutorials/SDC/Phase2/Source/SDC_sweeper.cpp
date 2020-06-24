@@ -252,15 +252,28 @@ void SDC_fcomp(MultiFab& rhs,
   Real qij;
   int numV=0;
     
-    // relative and absolute tolerances for linear solve
-  const Real tol_rel = 1.0e-12;
-  const Real tol_abs = 1.0e-12;
-  const Real tol_res = 1.e-10;    // Tolerance on residual
-  Real resnorm = 1.e10;    // Tolerance on residual
+  // relative and absolute tolerances for linear solve with MLMG (used to be const)
+  Real tol_abs_MG = 1.0e-12;
+  pp.query("tol_abs_MG",tol_abs_MG);
+    
+  Real tol_rel_MG = 1.0e-12;
+  pp.query("tol_rel_MG",tol_rel_MG);
+
+  // Tolerances for residual in L222(L244)-L4 iteration (used to be const)
+  Real tol_abs_res = 1.e-10;    // absolute tolerance on residual
+  pp.query("tol_abs_res",tol_abs_res);
+    
+  Real tol_rel_corr = 1.e-10;    // relative tolerance on residual
+  pp.query("tol_rel_corr",tol_rel_corr);
+
+  Real resnorm = 1.e10;    // norm of residual for absolute tolerance
+  Real err_rel = 1.e10;  // relative error for relative tolerance
+  Real soln_norm = 1.0;
     Real zeroReal = 0.0;
     //  Real corrnorm;
   // Make some space for iteration stuff
   MultiFab corr(ba, dm, 1, 2);
+  corr.setVal(1.e10); // so that err_rel in first loop
   MultiFab resid(ba, dm, 1, 0);
   MultiFab eval_storage(ba, dm, 1, 0);
     
@@ -307,13 +320,10 @@ void SDC_fcomp(MultiFab& rhs,
 	int maxresk = 50;  //  Set max residual loops
         pp.query("maxresk",maxresk);
 
-        int numGS=10;     //  Set number of GS iterations (out dated)
-        pp.query("numGS",numGS);
-
-	int numVcycle=3;  // Set number of Vcycles per residual solve
+	int numVcycle=3;  // Set (max?) number of Vcycles per residual solve
         pp.query("numVcycle",numVcycle);
         
-        while ((resnorm > tol_res) & (resk <=maxresk))  //  Loop over residual solves
+        while ((resnorm > tol_abs_res) & (resk <=maxresk))  //  Loop over residual solves
 	  {
 
 	    //  Compute the diffusion operator
@@ -346,11 +356,17 @@ void SDC_fcomp(MultiFab& rhs,
             //corrnorm=eval_storage.norm0();
             //amrex::Print() << "iter " << resk << ",  Diffusion operator norm " << corrnorm << "\n";
             
-            resnorm=resid.norm0();
-	    if(resnorm <= tol_res){
-	      amrex::Print() << "Reached tolerance: resk iter " << resk << ",  residual norm " << resnorm << "\n";
-	      break;
-            }
+           resnorm = resid.norm0();
+          err_rel = corr.norm0()/soln_norm;
+          
+	      if(resnorm <= tol_abs_res ){
+	          amrex::Print() << "Reached absolute tolerance in L2-L4: resk iter " << resk << ",  residual norm " << resnorm << ", relative error " << err_rel << "\n";
+	          break;
+          }
+          if(err_rel <= tol_rel_corr ){
+              amrex::Print() << "Reached relative tolerance in L2-L4: resk iter " << resk << ",  residual norm " << resnorm << ", relative error " << err_rel << "\n";
+              break;
+          }
 
             
 
@@ -361,7 +377,7 @@ void SDC_fcomp(MultiFab& rhs,
 	    mlmg.setFixedIter(numVcycle);                
 	    mlmg.setVerbose(0);                
 	    mlabec.prepareForSolve();
-	    mlmg.solve({&corr}, {&resid}, tol_rel, tol_abs);
+	    mlmg.solve({&corr}, {&resid}, tol_rel_MG, tol_abs_MG);
 	    numV=mlmg.getNumIters();
 	    totV=totV+numV;
 	    amrex::Print() << "iter " << resk << ",  residual norm " << resnorm << ",  numV " << numV << "\n";	    
@@ -374,11 +390,11 @@ void SDC_fcomp(MultiFab& rhs,
             
 	     mlmg.setFixedIter(3);                
 	     mlabec.prepareForSolve();
-	     mlmg.solve({&corr}, {&resid}, tol_rel, tol_abs);	     
+	     mlmg.solve({&corr}, {&resid}, tol_rel_MG, tol_abs_MG);
 	     //mlabec.Fsmooth(0, 0, corr , resid, 0);
             }
             */
-
+        soln_norm = SDC.sol[sdc_m].norm0();
 	    //  Add correction to solution
 	    MultiFab::Saxpy(SDC.sol[sdc_m],1.0,corr,0,0,1,0);
 

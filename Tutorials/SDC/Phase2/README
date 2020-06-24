@@ -70,3 +70,13 @@ functions_2d.f90:  Evaluation of rhs terms and implicit diffusion solve
 
 
 This example uses the SDCstruct  class (see amrex/Src/SDC/)
+
+Some queried parameters:
+
+tol_abs_res = absolute tolerance for residual in L2-L4 iteration
+tol_rel_corr = relative tolerance for solution correction in L2-L4 iteration
+maxresk = max number of loops allowed in L2-L4 iteration
+
+tol_abs_MG = absolute tolerance in MLMG solve
+tol_rel_MG = relative tolerance in MLMG solve
+numVcycle = max number of V-cycles in MLMG solve
