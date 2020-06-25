@@ -73,10 +73,14 @@ This example uses the SDCstruct  class (see amrex/Src/SDC/)
 
 Some queried parameters:
 
-tol_abs_res = absolute tolerance for residual in L2-L4 iteration
-tol_rel_corr = relative tolerance for solution correction in L2-L4 iteration
-maxresk = max number of loops allowed in L2-L4 iteration
+jacobi_smooth = (Bool) variable relevant for 244 solver. Default set to "true", so the Jacobi smoother will be applied in MLMG. Should be used for n_cell>max_grid_size. If set to false, Gauss Siedel will be used as smoother.
 
-tol_abs_MG = absolute tolerance in MLMG solve
-tol_rel_MG = relative tolerance in MLMG solve
-numVcycle = max number of V-cycles in MLMG solve
+relaxation_parameter = (Real) scales the relaxation of the smoother used in MLMG. Default to "1.0". A larger value (>1) corresponds to underrelaxing.
+
+tol_abs_res = (Real) absolute tolerance for residual in L2-L4 iteration
+tol_rel_corr = (Real) relative tolerance for solution correction in L2-L4 iteration
+maxresk = (int) max number of loops allowed in L2-L4 iteration
+
+tol_abs_MG = (Real) absolute tolerance in MLMG solve
+tol_rel_MG = (Real) relative tolerance in MLMG solve
+numVcycle = (int) max number of V-cycles in MLMG solve

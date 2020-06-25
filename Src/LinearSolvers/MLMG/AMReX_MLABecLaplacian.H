@@ -85,6 +85,8 @@ protected:
 
     Real m_a_scalar = std::numeric_limits<Real>::quiet_NaN();
     Real m_b_scalar = std::numeric_limits<Real>::quiet_NaN();
+    Real m_relaxation_parameter;
+    bool m_jacobi_smooth;
     Vector<Vector<MultiFab> > m_a_coeffs;
     Vector<Vector<Array<MultiFab,AMREX_SPACEDIM> > > m_b_coeffs;
 
