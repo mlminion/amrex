@@ -57,7 +57,9 @@ void SDC_advance (MultiFab& phi_old,
           MultiFab& bdry_values,
                   int Nprob, 
                   int Lord,
-                  int &totV
+                  int &tot_Vcycle,
+                  int &tot_res_iter,
+                  int &tot_SDC_sweep
 );
 void SDC_feval (std::array<MultiFab, AMREX_SPACEDIM>& flux,
 		const Geometry& geom, 
@@ -84,6 +86,6 @@ void SDC_fcomp(MultiFab& rhs,
            std::array<MultiFab,AMREX_SPACEDIM>& face_bcoef,
            std::array<MultiFab,AMREX_SPACEDIM>& prod_stor,
 	       int sdc_m,int npiece, Real time, Real epsilon,
-               Real k_freq, Real kappa, int &totV, int Nprob,int Lord);
+               Real k_freq, Real kappa, int &tot_Vcycle,int &tot_res_iter, int Nprob,int Lord);
 
 #endif

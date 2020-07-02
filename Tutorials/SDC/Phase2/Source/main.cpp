@@ -27,7 +27,7 @@ void main_main ()
     int n_cell, max_grid_size, Nsteps, plot_int, Nprob;
     Vector<int> bc_lo(AMREX_SPACEDIM,0);
     Vector<int> bc_hi(AMREX_SPACEDIM,0);
-
+    Real phi_error;  // for reporting errors
     // What time is it now?  We'll use this to compute total run time.
     Real strt_time = ParallelDescriptor::second();
 
@@ -203,14 +203,14 @@ void main_main ()
     // Make an SDC structure
     int Nnodes=5;  // Default to 8th order
     int Npieces=2; // Default is full MISDC
-    int Nsweeps=2*Nnodes-2;  //  This will give highest formal accuracy for Lobatto nodes
+    int max_SDC_sweeps=2*Nnodes-2;  //  This will give highest formal accuracy for Lobatto nodes
     pp.get("Nnodes",Nnodes);
     pp.get("Npieces",Npieces);
-    pp.get("Nsweeps",Nsweeps);  //  Uncomment to adjust Nsweeps          
+    //pp.get("max_SDC_sweeps",max_SDC_sweeps);  //  Uncomment to adjust Nsweeps          
 
     //  Build the structure
     SDCstruct SDCmats(Nnodes,Npieces,phi_old);
-    SDCmats.Nsweeps =Nsweeps;  // Number of SDC sweeps per time step
+    SDCmats.Nsweeps=max_SDC_sweeps;  // Number of SDC sweeps per time step
     
     // Write a plotfile of the initial data if plot_int > 0 (plot_int was defined in the inputs file)
     MultiFab::Copy(phi_old, phi_new, 0, 0, 1, 2);
@@ -378,13 +378,15 @@ mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(face_bcoef)); // m_b_coeffs doesn'
   //  Do the time stepping
   // For now m_bcc assumed to just have spatial dependence. Time dependence should be easy to include.
   MultiFab::Copy(phi_old, phi_new, 0, 0, 1, 2);
-  int totV=0;
+  int tot_Vcycle=0;
+  int tot_res_iter=0;
+  int tot_SDC_sweep=0;
   for (int n = 1; n <= Nsteps; ++n)
     {
       //amrex::Print() << "time" << time << "\n";
       // Do an SDC step
       
-      SDC_advance(phi_old, phi_new,flux, dt, geom, bc, mlmg,mlabec,SDCmats,a,d,r ,face_bcoef, prod_stor,time, epsilon, k_freq, kappa, bdry_values, Nprob,Lord,totV);
+      SDC_advance(phi_old, phi_new,flux, dt, geom, bc, mlmg,mlabec,SDCmats,a,d,r ,face_bcoef, prod_stor,time, epsilon, k_freq, kappa, bdry_values, Nprob,Lord,tot_Vcycle,tot_res_iter,tot_SDC_sweep);
        
       
       MultiFab::Copy(phi_old, phi_new, 0, 0, 1, 2);    
@@ -401,7 +403,8 @@ mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(face_bcoef)); // m_b_coeffs doesn'
       
       // Tell the I/O Processor to write out which step we're doing
       //  amrex::Print() << "Advanced step " << n << "\n";
-      amrex::Print() << "max error in phi " << phi_new.norm0() << "\n";
+      phi_error=phi_new.norm0();
+      amrex::Print() << "max error in phi " << phi_error << "\n";
       // Write a plotfile of the current data (plot_int was defined in the inputs file)
       if (plot_int > 0 && n%plot_int == 0)
 	{
@@ -418,6 +421,11 @@ mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(face_bcoef)); // m_b_coeffs doesn'
 
     // Tell the I/O Processor to write out the "run time"
     amrex::Print() << "Run time = " << stop_time << std::endl;
-    amrex::Print() << "total V cycles = " << Nsteps << "  [ " << totV <<", "<< phi_new.norm0() <<"],\n";
+    amrex::Print() << "Nsteps = " << Nsteps << std::endl;
+    amrex::Print() << "total SDC sweeps = " << tot_SDC_sweep << std::endl;
+    amrex::Print() << "total SDC substeps = " << tot_SDC_sweep*(Nnodes-1) << std::endl;
+    amrex::Print() << "total residual iters = " << tot_res_iter << std::endl;
+    amrex::Print() << "total V cycles = " << tot_Vcycle << std::endl;
+    amrex::Print() << "dat = [" << stop_time  << ", "<< Nsteps << ", " << tot_SDC_sweep <<", " << tot_res_iter <<", "<< tot_Vcycle <<", "<< phi_error <<"]" << std::endl;
 
 }
