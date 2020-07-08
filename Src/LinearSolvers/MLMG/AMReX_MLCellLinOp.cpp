@@ -361,17 +361,34 @@ MLCellLinOp::smooth (int amrlev, int mglev, MultiFab& sol, const MultiFab& rhs,
     }
     else
     {
-        // Redblack doesn't make sense with 4th order scheme.
-        int redblack = 0;
-        applyBC(amrlev, mglev, sol, BCMode::Homogeneous, StateMode::Solution,
-                nullptr, skip_fillboundary);
-        
-#ifdef AMREX_SOFT_PERF_COUNTERS
-        perf_counters.smooth(sol);
-#endif
-        Fsmooth(amrlev, mglev, sol, rhs, redblack);
+        // Std Redblack doesn't make sense with 4th order scheme.
+        if(sol.boxArray().size()>1){//2x2redblack GS for high order. Requires that both n_cell and max_grid_size be even. Could fail on bottom solve?
+            for (int redblack = 0; redblack < 2; ++redblack)
+            {
+            applyBC(amrlev, mglev, sol, BCMode::Homogeneous, StateMode::Solution,
+                    nullptr, skip_fillboundary);
+            
+    #ifdef AMREX_SOFT_PERF_COUNTERS
+            perf_counters.smooth(sol);
+    #endif
+            Fsmooth(amrlev, mglev, sol, rhs, redblack);
 
-        skip_fillboundary = false;
+            skip_fillboundary = false;
+            }
+        }
+        else //no redblack
+        {
+            int redblack = -1;
+            applyBC(amrlev, mglev, sol, BCMode::Homogeneous, StateMode::Solution,
+                    nullptr, skip_fillboundary);
+            
+#ifdef AMREX_SOFT_PERF_COUNTERS
+            perf_counters.smooth(sol);
+#endif
+            Fsmooth(amrlev, mglev, sol, rhs, redblack);
+            
+            skip_fillboundary = false;
+        }
     }
 }
 

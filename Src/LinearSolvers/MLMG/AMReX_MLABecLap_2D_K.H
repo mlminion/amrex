@@ -213,7 +213,7 @@ void abec_gsrb_high (Box const& box, Array4<Real> const& phi,
                      Array4<int const> const& m1,
                      Array4<int const> const& m2,
                      Array4<int const> const& m3,
-                     Box const& vbox, int nc, Array4<Real const> const& phi_tmp, Real relaxation_parameter) noexcept
+                     Box const& vbox, int nc, Array4<Real const> const& phi_tmp, Real relaxation_parameter, int redblack) noexcept
 {
     const auto lo = amrex::lbound(box);
     const auto hi = amrex::ubound(box);
@@ -264,9 +264,9 @@ void abec_gsrb_high (Box const& box, Array4<Real> const& phi,
         for     (int j = lo.y; j <= hi.y; ++j) {
             AMREX_PRAGMA_SIMD
             for (int i = lo.x; i <= hi.x; ++i) {
+                if ((((i-(i%2))/2)+((j-(j%2))/2)+redblack)%2 == 0 || (redblack==-1)) {
                 
-                
-               // amrex::Print() << "index: (" << i << "," << j <<") ," << "sol: " << phi(i,j,0,n) << ", phi temp: " << phi_tmp(i,j,0,n) << "\n";
+                //amrex::Print() << "index: (" << i << "," << j <<") ," << "sol: " << phi(i,j,0,n) << ", phi temp: " << phi_tmp(i,j,0,n) << "\n";
                 // Lo coefficients
                 feval_coef_xlo_i1_close = (i == vlo.x and m0(vlo.x-1,j,0) > 0) ? stencil_coef_i1_close*
                 (1.0/12.0)*dhx*(bX(i+1,j,0,n) + 15.0*bX(i,j,0,n)) : 0.0;
@@ -336,7 +336,7 @@ void abec_gsrb_high (Box const& box, Array4<Real> const& phi,
                  << " " << bY(i,j+1,0,n) << " " << phi(i,j+2,0,n) << "\n";
                  Abort("diag");
                  }*/
-                
+                }
             }
         }
     }
