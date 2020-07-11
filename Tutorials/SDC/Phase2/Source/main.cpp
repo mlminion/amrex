@@ -23,8 +23,9 @@ void main_main ()
     Real a;  // advection coef.
     Real d;  // diffusion coef.
     Real r;  // reaction coef. 
+    int n_cell, max_grid_size, Nsteps, plot_int, Nprob, max_SDC_sweeps;
+
     // AMREX_SPACEDIM: number of dimensions
-    int n_cell, max_grid_size, Nsteps, plot_int, Nprob;
     Vector<int> bc_lo(AMREX_SPACEDIM,0);
     Vector<int> bc_hi(AMREX_SPACEDIM,0);
     Real phi_error;  // for reporting errors
@@ -60,9 +61,9 @@ void main_main ()
     pp.queryarr("bc_hi", bc_hi);
     
     //  Read in the coefficients for A-D-R
-    pp.query("a",a);
-    pp.query("d",d);
-    pp.query("r",r);
+    pp.get("a",a);
+    pp.get("d",d);
+    pp.get("r",r);
     // Read in the problem--see READ ME file
     pp.query("Nprob",Nprob);
     // Read in Lord which is the order of the stencil (or residual) of the overall method
@@ -78,7 +79,6 @@ void main_main ()
     Real k_freq =1.0;
     pp.query("k_freq",k_freq);    
     Real epsilon = 0.25;
-    Real kappa = 2.0*d*pow(k_freq,2.0); 
 
     // Set BC based on Nprob:
     for (int idim=0; idim < AMREX_SPACEDIM; ++idim) {
@@ -203,10 +203,12 @@ void main_main ()
     // Make an SDC structure
     int Nnodes=5;  // Default to 8th order
     int Npieces=2; // Default is full MISDC
-    int max_SDC_sweeps=2*Nnodes-2;  //  This will give highest formal accuracy for Lobatto nodes
+
     pp.get("Nnodes",Nnodes);
     pp.get("Npieces",Npieces);
-    //pp.get("max_SDC_sweeps",max_SDC_sweeps);  //  Uncomment to adjust Nsweeps          
+    pp.get("max_SDC_sweeps",max_SDC_sweeps);  
+    if (max_SDC_sweeps < 0) 
+      int max_SDC_sweeps=2*Nnodes-2;  //  This will give highest formal accuracy for Lobatto nodes
 
     //  Build the structure
     SDCstruct SDCmats(Nnodes,Npieces,phi_old);
@@ -226,7 +228,7 @@ void main_main ()
 		const Box& bx = mfi.validbox();
 		err_phi(BL_TO_FORTRAN_BOX(bx),
 			BL_TO_FORTRAN_ANYD(phi_new[mfi]),
-			geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&a,&d,&r,&time, &epsilon,&k_freq, &kappa, &Nprob);
+			geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&a,&d,&r,&time, &epsilon,&k_freq, &Nprob);
 	      }
 	  }
 	amrex::Print() << "max error in phi " << phi_new.norm0() << "\n";
@@ -342,7 +344,7 @@ mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(face_bcoef)); // m_b_coeffs doesn'
     {          const Box& bx = mfi.validbox();
         fill_bdry_values(BL_TO_FORTRAN_BOX(bx),
                          BL_TO_FORTRAN_ANYD(bdry_values[mfi]),
-                         geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&time, &epsilon,&k_freq, &kappa,&Nprob);
+                         geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&time, &Nprob);
     }
     
     
@@ -386,7 +388,7 @@ mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(face_bcoef)); // m_b_coeffs doesn'
       //amrex::Print() << "time" << time << "\n";
       // Do an SDC step
       
-      SDC_advance(phi_old, phi_new,flux, dt, geom, bc, mlmg,mlabec,SDCmats,a,d,r ,face_bcoef, prod_stor,time, epsilon, k_freq, kappa, bdry_values, Nprob,Lord,tot_Vcycle,tot_res_iter,tot_SDC_sweep);
+      SDC_advance(phi_old, phi_new,flux, dt, geom, bc, mlmg,mlabec,SDCmats,face_bcoef, prod_stor,time, bdry_values, tot_Vcycle,tot_res_iter,tot_SDC_sweep);
        
       
       MultiFab::Copy(phi_old, phi_new, 0, 0, 1, 2);    
@@ -398,7 +400,7 @@ mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(face_bcoef)); // m_b_coeffs doesn'
 	    const Box& bx = mfi.validbox();
 	    err_phi(BL_TO_FORTRAN_BOX(bx),
 		    BL_TO_FORTRAN_ANYD(phi_new[mfi]),
-		    geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&a,&d,&r,&time, &epsilon,&k_freq, &kappa, &Nprob);
+		    geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&a,&d,&r,&time, &epsilon,&k_freq, &Nprob);
 	  }
       
       // Tell the I/O Processor to write out which step we're doing

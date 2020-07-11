@@ -21,7 +21,7 @@ void init_beta(const int* lo, const int* hi,
 	       amrex_real* data, const int* dlo, const int* dhi,
 	       const amrex_real* dx, const amrex_real* prob_lo, const amrex_real* prob_hi,
 	       amrex_real* a,amrex_real* d,amrex_real* r,amrex_real* time,
-           amrex_real* epsilon,amrex_real* k_freq, amrex_real* kappa, const int* Nprob );
+           amrex_real* epsilon,amrex_real* k_freq,  const int* Nprob );
     void print_multifab(amrex_real* data, const int* dlo, const int* dhi);
 
   void SDC_feval_F(const int* lo, const int* hi,
@@ -35,11 +35,12 @@ void init_beta(const int* lo, const int* hi,
 		   amrex_real* f, const int* flo, const int* fhi,
 		   const amrex_real* dx,const amrex_real* a,
 		   const amrex_real* d,const amrex_real* r,
-           amrex_real* facex, const int* facexlo, const int* facexhi,
-           amrex_real* facey, const int* faceylo, const int* faceyhi,
-           amrex_real* prodx, const int* prodxlo, const int* prodxhi,
-           amrex_real* prody, const int* prodylo, const int* prodyhi,
-		   int *n, const amrex_real* time, amrex_real* epsilon,amrex_real* k_freq, amrex_real* kappa, const int* Nprob, int* Lord);
+		   amrex_real* facex, const int* facexlo, const int* facexhi,
+		   amrex_real* facey, const int* faceylo, const int* faceyhi,
+		   amrex_real* prodx, const int* prodxlo, const int* prodxhi,
+		   amrex_real* prody, const int* prodylo, const int* prodyhi,
+		   int *n, const amrex_real* time, amrex_real* epsilon,amrex_real* k_freq, const int* Nprob, int* Lord);
+
   void SDC_fcomp_reaction_F(const int* lo, const int* hi,
                       const int* domlo, const int* domhi,
                       amrex_real* phi, const int* philo, const int* phihi,
@@ -59,8 +60,7 @@ void cc_to_face_loc(const int* lo, const int* hi,
 void fill_bdry_values(const int* lo, const int* hi,
                       amrex_real* data, const int* dlo, const int* dhi,
                       const amrex_real* dx, const amrex_real* prob_lo, const amrex_real* prob_hi,
-                      amrex_real* time,
-                      amrex_real* epsilon,amrex_real* k_freq, amrex_real* kappa, const int* Nprob );
+                      amrex_real* time,const int* Nprob );
     
 #ifdef __cplusplus
 }

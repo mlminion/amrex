@@ -121,7 +121,7 @@ y = prob_lo(2) + dble(j) * dx(2)
 end do
 end subroutine init_beta
 
-subroutine err_phi(lo, hi, phi, philo, phihi, dx, prob_lo, prob_hi,a,d,r,time, epsilon, k_freq, kappa, Nprob) bind(C, name="err_phi")
+subroutine err_phi(lo, hi, phi, philo, phihi, dx, prob_lo, prob_hi,a,d,r,time, epsilon, k_freq,  Nprob) bind(C, name="err_phi")
   !  Subtract the exact solution from phi.  This will only work for special initial conditions
   !  We use the exact discretized form for diffusion and reaction, and exact translation for advection
   use amrex_fort_module, only : amrex_real
@@ -135,21 +135,21 @@ subroutine err_phi(lo, hi, phi, philo, phihi, dx, prob_lo, prob_hi,a,d,r,time, e
   real(amrex_real), intent(in   ) :: prob_hi(2) 
   real(amrex_real), intent(in   ) :: a,d,r
   real(amrex_real), intent(in   ) :: time
-real(amrex_real), intent(in   ) :: epsilon, k_freq, kappa
+  real(amrex_real), intent(in   ) :: epsilon, k_freq
 
   integer          :: i,j,kx,ky,nbox, i_quad, j_quad
-  double precision :: x,y,sym,tupi, maxphi,xx,yy,t0,pi,x_quad,y_quad,om
-double precision :: gauss_nodeFrac(0:2)
-double precision :: gauss_weights(0:2)
-gauss_nodeFrac = (/ (1.d0-(3.d0/5.d0)**(0.5d0))/2.d0,0.5d0,(1.d0+(3.d0/5.d0)**(0.5d0))/2.d0 /)
-gauss_weights = (/ (5.d0/18.d0),(8.d0/18.d0),(5.d0/18.d0)/)
+  double precision :: x,y,sym,tupi, maxphi,xx,yy,t0,pi,x_quad,y_quad,om,kappa
+  double precision :: gauss_nodeFrac(0:2)
+  double precision :: gauss_weights(0:2)
+  gauss_nodeFrac = (/ (1.d0-(3.d0/5.d0)**(0.5d0))/2.d0,0.5d0,(1.d0+(3.d0/5.d0)**(0.5d0))/2.d0 /)
+  gauss_weights = (/ (5.d0/18.d0),(8.d0/18.d0),(5.d0/18.d0)/)
 
 
 
   tupi=3.14159265358979323846d0*2d0
   pi=3.14159265358979323846d0
- om=k_freq*pi
-
+  om=k_freq*pi
+  kappa=2.0*d*k_freq*k_freq
   do j = philo(2), phihi(2)
     !y = prob_lo(2) + (dble(j)+1.d0/2.d0) * dx(2) !+a*time
     y = prob_lo(2) + dble(j) * dx(2)

@@ -15,12 +15,12 @@ void SDC_advance(MultiFab& phi_old,
 		 const Vector<BCRec>& bc,
 		 MLMG&  mlmg,
 		 MLABecLaplacian& mlabec,
-		 SDCstruct &SDC, Real a, Real d, Real r,
+		 SDCstruct &SDC, 
 		 std::array<MultiFab,AMREX_SPACEDIM>& face_bcoef,
 		 std::array<MultiFab,AMREX_SPACEDIM>& prod_stor,
-		 Real time, Real epsilon, Real k_freq, Real kappa,
+		 Real time, 
 		 MultiFab& bdry_values,
-		 int Nprob,int Lord,int &tot_Vcycle,int &tot_res_iter,int &tot_SDC_sweep)
+		 int &tot_Vcycle,int &tot_res_iter,int &tot_SDC_sweep)
 {
 
   /*  This is a multi-implicit SDC example time step for an 
@@ -36,7 +36,10 @@ void SDC_advance(MultiFab& phi_old,
   Real qij;   //  Temp used for quadrature weight
   Real current_time = time;  //  Updated at SDC nodes in loop
   ParmParse pp;
-  
+  int Nprob;
+  Real k_freq;
+  pp.get("Nprob",Nprob);
+  pp.get("k_freq",k_freq);
   // Copy old phi into first SDC node
   MultiFab::Copy(SDC.sol[0],phi_old, 0, 0, 1, phi_old.nGrow());
   
@@ -50,7 +53,7 @@ void SDC_advance(MultiFab& phi_old,
 	const Box& bx = mfi.validbox();
 	fill_bdry_values(BL_TO_FORTRAN_BOX(bx),
 			 BL_TO_FORTRAN_ANYD(bdry_values[mfi]),
-			 geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&current_time, &epsilon,&k_freq, &kappa, &Nprob);
+			 geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&current_time, &Nprob);
       }
     
     mlabec.fourthOrderBCFill(SDC.sol[0],bdry_values);
@@ -63,7 +66,7 @@ void SDC_advance(MultiFab& phi_old,
   
   //  Compute the first function value (Need boundary filled here at current time explicit).
   int sdc_m=0;
-  SDC_feval(flux,geom,bc,SDC,a,d,r,face_bcoef,prod_stor,sdc_m,-1,time, epsilon, k_freq, kappa, Nprob,Lord);
+  SDC_feval(flux,geom,bc,SDC,face_bcoef,prod_stor,sdc_m,-1,time);
   
   // Copy first function value to all nodes
   for (int sdc_n = 1; sdc_n < SDC.Nnodes; sdc_n++)
@@ -71,7 +74,7 @@ void SDC_advance(MultiFab& phi_old,
       current_time = time+dt*SDC.qnodes[sdc_n];
       MultiFab::Copy(SDC.sol[sdc_n],SDC.sol[0], 0, 0, 1, SDC.sol[0].nGrow());
       // Subsequent Calculation doesn't need BC conditions ... fills out forcing term.  For time dependent BC, this would be inconsistent
-      SDC_feval(flux,geom,bc,SDC,a,d,r,face_bcoef,prod_stor,sdc_n,0,current_time, epsilon, k_freq, kappa, Nprob,Lord);
+      SDC_feval(flux,geom,bc,SDC,face_bcoef,prod_stor,sdc_n,0,current_time);
       
       //  Copy diffusion and reaction terms
       MultiFab::Copy(SDC.f[1][sdc_n],SDC.f[1][0], 0, 0, 1,SDC.f[1][0].nGrow() );
@@ -117,7 +120,7 @@ void SDC_advance(MultiFab& phi_old,
 		const Box& bx = mfi.validbox();  //  Is 'const necessary here?
                 fill_bdry_values(BL_TO_FORTRAN_BOX(bx),
                                  BL_TO_FORTRAN_ANYD(bdry_values[mfi]),
-                                 geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&current_time, &epsilon,&k_freq, &kappa, &Nprob);
+                                 geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&current_time, &Nprob);
 	      }
             mlabec.fourthOrderBCFill(SDC.sol[sdc_m+1],bdry_values);
 	  }
@@ -125,7 +128,7 @@ void SDC_advance(MultiFab& phi_old,
 	  SDC.sol[sdc_m+1].FillBoundary(geom.periodicity());
         
 	  // Solve for the first implicit part
-	  SDC_fcomp(phi_new, flux, geom, bc, SDC, mlmg, mlabec,dt,a,d,r,face_bcoef,prod_stor,sdc_m+1,1, current_time, epsilon, k_freq, kappa, tot_Vcycle, tot_res_iter,Nprob,Lord);
+	  SDC_fcomp(phi_new, flux, geom, bc, SDC, mlmg, mlabec,dt,face_bcoef,prod_stor,sdc_m+1,1, current_time, tot_Vcycle, tot_res_iter);
 	  
 	  if (SDC.Npieces==3)
 	    {
@@ -136,7 +139,7 @@ void SDC_advance(MultiFab& phi_old,
 	      SDC.SDC_rhs_misdc(phi_new,dt,sdc_m);
 	      
 	      // Solve for the second implicit part
-	      SDC_fcomp(phi_new, flux, geom, bc, SDC, mlmg, mlabec,dt, a,d,r,face_bcoef,prod_stor,sdc_m+1,2, current_time, epsilon, k_freq, kappa, tot_Vcycle,tot_res_iter, Nprob,Lord);
+	      SDC_fcomp(phi_new, flux, geom, bc, SDC, mlmg, mlabec,dt,face_bcoef,prod_stor,sdc_m+1,2, current_time,tot_Vcycle,tot_res_iter );
 	    }
 	  // Compute the function values at node sdc_m+1
 	  
@@ -146,7 +149,7 @@ void SDC_advance(MultiFab& phi_old,
 	      {          const Box& bx = mfi.validbox();
 		fill_bdry_values(BL_TO_FORTRAN_BOX(bx),
 				 BL_TO_FORTRAN_ANYD(bdry_values[mfi]),
-				 geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&current_time, &epsilon,&k_freq, &kappa, &Nprob);
+				 geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&current_time, &Nprob);
 	      }
 	    mlabec.fourthOrderBCFill(SDC.sol[sdc_m+1],bdry_values);
 	  }
@@ -154,8 +157,7 @@ void SDC_advance(MultiFab& phi_old,
 	  //       mlabec.fillSolutionBC(0, SDC.sol[sdc_m+1], &bdry_values);
 
 	  //  Evaluate all the flux terms with new solution  
-	  SDC_feval(flux,geom,bc,SDC,a,d,r,face_bcoef,prod_stor,
-		    sdc_m+1,-1,current_time,epsilon, k_freq, kappa, Nprob,Lord);
+	  SDC_feval(flux,geom,bc,SDC,face_bcoef,prod_stor,sdc_m+1,-1,current_time);
 	  
 	} // end SDC substep loop (sdc_m)
       
@@ -172,18 +174,30 @@ void SDC_feval(std::array<MultiFab, AMREX_SPACEDIM>& flux,
 	       const Geometry& geom,
 	       const Vector<BCRec>& bc,
 	       SDCstruct &SDC,
-	       Real a,Real d,Real r,
 	       std::array<MultiFab, AMREX_SPACEDIM>& face_bcoef,
 	       std::array<MultiFab, AMREX_SPACEDIM>& prod_stor,
-	       int sdc_m,int npiece, Real time, Real epsilon, Real k_freq, Real kappa, int Nprob,int Lord)
+	       int sdc_m,int npiece, Real time)
 {
   /*  Evaluate explicitly the rhs terms of the equation at the SDC node "sdc_m".
       The input parameter "npiece" describes which term to do.  
       If npiece = -1, do all the pieces */
-  
+  ParmParse pp;
   const Box& domain_bx = geom.Domain();
   const Real* dx = geom.CellSize();
   int nlo,nhi;
+
+  //  Read in the coefficients for A-D-R
+  Real a,d,r;
+  pp.query("a",a);
+  pp.query("d",d);
+  pp.query("r",r);
+  int Nprob,Lord;
+  Real k_freq;
+  Real epsilon=0.25;
+  pp.get("Nprob",Nprob);
+  pp.get("Lord",Lord);
+  pp.get("k_freq",k_freq);
+  pp.get("epsilon",epsilon);
 
   // Decide which pieces to loop over
   if (npiece < 0)
@@ -216,7 +230,7 @@ void SDC_feval(std::array<MultiFab, AMREX_SPACEDIM>& flux,
 		      BL_TO_FORTRAN_ANYD(face_bcoef[1][mfi]),
 		      BL_TO_FORTRAN_ANYD(prod_stor[0][mfi]),
 		      BL_TO_FORTRAN_ANYD(prod_stor[1][mfi]),
-		      &n, &time, &epsilon, &k_freq, &kappa, &Nprob, &Lord);
+		      &n, &time, &epsilon, &k_freq, &Nprob, &Lord);
 	}
       
     }
@@ -228,24 +242,36 @@ void SDC_fcomp(MultiFab& rhs,
 	       SDCstruct &SDC,
 	       MLMG &mlmg,
 	       MLABecLaplacian& mlabec,	      
-	       Real dt,Real a,Real d,Real r,
+	       Real dt,
 	       std::array<MultiFab,AMREX_SPACEDIM>& face_bcoef,
 	       std::array<MultiFab,AMREX_SPACEDIM>& prod_stor,
-	       int sdc_m,int npiece, Real time, Real epsilon, Real k_freq, Real kappa,
-	       int &tot_Vcycle, int &tot_res_iter, int Nprob,int Lord)
+	       int sdc_m,int npiece, Real time,
+	       int &tot_Vcycle, int &tot_res_iter)
 {
   /*  Solve implicitly for the  terms of the equation at the SDC node "sdc_m".
       The input parameter "npiece" describes which term to do.  */
-  ParmParse pp;
-    
   const BoxArray &ba=SDC.sol[0].boxArray();
   const DistributionMapping &dm=SDC.sol[0].DistributionMap();
   
   const Box& domain_bx = geom.Domain();
   const Real* dx = geom.CellSize();
+  ParmParse pp;  
   Real qij;   //  Temp used for quadrature weight
   int numV=0; //  Collects the number of Vcycles
   
+  //  Read in the coefficients for A-D-R
+  Real a,d,r;
+  pp.query("a",a);
+  pp.query("d",d);
+  pp.query("r",r);
+  int Nprob,Lord;
+  Real epsilon,k_freq;
+  pp.get("Nprob",Nprob);
+  pp.get("Lord",Lord);
+  pp.get("epsilon",epsilon);
+  pp.get("k_freq",k_freq);
+
+
   // relative and absolute tolerances for linear solve with MLMG (used to be const)
   Real tol_abs_MG = 1.0e-12;
   pp.query("tol_abs_MG",tol_abs_MG);
@@ -280,7 +306,7 @@ void SDC_fcomp(MultiFab& rhs,
       {          const Box& bx = mfi.validbox();
 	fill_bdry_values(BL_TO_FORTRAN_BOX(bx),
 			 BL_TO_FORTRAN_ANYD(bdry_values[mfi]),
-			 geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&time, &epsilon,&k_freq, &kappa, &Nprob);
+			 geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&time, &Nprob);
       }
     //  mlabec.fourthOrderBCFill(SDC.sol[sdc_m],bdry_values);
   }
@@ -322,7 +348,8 @@ void SDC_fcomp(MultiFab& rhs,
 			  BL_TO_FORTRAN_ANYD(face_bcoef[1][mfi]),
 			  BL_TO_FORTRAN_ANYD(prod_stor[0][mfi]),
 			  BL_TO_FORTRAN_ANYD(prod_stor[1][mfi]),
-			  &npiece, &zeroReal, &zeroReal, &zeroReal, &zeroReal, &Nprob,&Lord);
+			  &npiece, &time, &epsilon, &k_freq, &Nprob, &Lord);			  
+
 	      
             }
             //Rescale eval_storage to make resid.
