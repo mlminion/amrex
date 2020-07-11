@@ -296,6 +296,9 @@ MLABecLaplacian::Fsmooth (int amrlev, int mglev, MultiFab& sol, const MultiFab& 
 {
     BL_PROFILE("MLABecLaplacian::Fsmooth()");
 
+    //Print() << "Boxarray size: " << m_a_coeffs[amrlev][mglev].boxArray().size() << std::endl;
+    
+    
     const MultiFab& acoef = m_a_coeffs[amrlev][mglev];
     AMREX_D_TERM(const MultiFab& bxcoef = m_b_coeffs[amrlev][mglev][0];,
                  const MultiFab& bycoef = m_b_coeffs[amrlev][mglev][1];,
@@ -399,6 +402,7 @@ MLABecLaplacian::Fsmooth (int amrlev, int mglev, MultiFab& sol, const MultiFab& 
             }
             else if ((opOrder() == 244) && (AMREX_SPACEDIM == 2))
             {
+                // Print() << "vbx: " << vbx.longside() << " tbx: " << tbx.longside() << std::endl;
                 
                 if(m_jacobi_smooth)
                 {
@@ -410,10 +414,12 @@ MLABecLaplacian::Fsmooth (int amrlev, int mglev, MultiFab& sol, const MultiFab& 
                 }
                 else
                 {
-                    abec_gsrb_high(thread_box, solnfab, rhsfab, alpha, dhx, dhy,
-                                     afab, bxfab, byfab,
-                                     m0, m1, m2, m3,
-                                     vbx, nc, phi_tmpfab, m_relaxation_parameter);
+                    
+                        abec_gsrb_high(thread_box, solnfab, rhsfab, alpha, dhx, dhy,
+                                         afab, bxfab, byfab,
+                                         m0, m1, m2, m3,
+                                         vbx, nc, phi_tmpfab, m_relaxation_parameter, redblack);
+                    
                 }
                 
             }

@@ -5,7 +5,9 @@ Nsteps = 8
 #  Multigrid stuff
 MGord=222
 Lord=444
-max_Vcycle=15
+
+max_Vcycle=3
+
 tol_abs_MG=1.0e-12
 tol_rel_MG=1.0e-12
 tol_abs_res= 1.0e-10
