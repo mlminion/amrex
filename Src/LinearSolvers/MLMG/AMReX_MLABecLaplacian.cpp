@@ -415,10 +415,20 @@ MLABecLaplacian::Fsmooth (int amrlev, int mglev, MultiFab& sol, const MultiFab& 
                 else
                 {
                     
+                        if(1==1)
+                        {
                         abec_gsrb_high(thread_box, solnfab, rhsfab, alpha, dhx, dhy,
                                          afab, bxfab, byfab,
                                          m0, m1, m2, m3,
                                          vbx, nc, phi_tmpfab, m_relaxation_parameter, redblack);
+                        }
+                        else
+                        {
+                            abec_gsrbg_high(thread_box, solnfab, rhsfab, alpha, dhx, dhy,
+                                           afab, bxfab, byfab,
+                                           m0, m1, m2, m3,
+                                           vbx, nc, phi_tmpfab, m_relaxation_parameter, redblack); // red black green
+                        }
                     
                 }
                 
