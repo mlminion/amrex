@@ -10,8 +10,8 @@ max_Vcycle=3
 
 tol_abs_MG=1.0e-12
 tol_rel_MG=1.0e-12
-tol_abs_res= 1.0e-10
-tol_rel_res= 1.0e-10
+tol_abs_res= 1.0e-12
+tol_rel_res= 1.0e-12
 max_res_iter=50
 
 #  Spatial size 
@@ -19,11 +19,11 @@ n_cell = 128
 max_grid_size = 128
 
 #  Define SDC parameters
-Nnodes=5
+Nnodes=4
 Npieces=2
 max_SDC_sweeps=8
 Nprob=4
-tol_abs_SDC = 1.0e-9
+tol_abs_SDC = 1.0e-8
 
 
 #  Define the advection, diffusion, and reaction parameters
@@ -46,3 +46,5 @@ jacobi_smooth=false
 
 #set plot_int to 1 to make plot files
 plot_int = 0
+#set plot_err to 1 to make plot files be errors
+plot_err = 1

@@ -30,6 +30,7 @@ class SDCstruct
    int*  Nflags;      //!< Flags for quadrature rules
 
    int Nnodes;         //!< Number of quadrature nodes
+   int Ncomp;          //!< Number of components in solutions and functions
    int qtype=1;        //!< Type of quadrature nodes
    int Nsweeps=8;      //!< Number of sweeps per time step
    int Npieces;        //!< Number of terms in RHS
@@ -46,7 +47,7 @@ class SDCstruct
    // SDC storage
    Vector<MultiFab> sol;           //!< Solution at the nodes
    Vector<Vector<MultiFab> > f;    //!< Functions a nodes access by [npieces][node]
-   Vector<MultiFab> res;           //!< Temp storage
+   Vector<MultiFab> res;           //!< Temp storage for integrals
    Vector<MultiFab> Ithree;        //!< Integration piece for MISDC
 
 
@@ -60,9 +61,16 @@ class SDCstruct
    SDCstruct(int Nnodes_in,int Npieces_in, MultiFab& sol_in);
 
    //  Sweeper routines
+   void SDC_residual(Real dt);
+   void SDC_integrals(Real dt);
+   void SDC_integrals_diff(Real dt);
    void SDC_rhs_integrals(Real dt);
+   
+   void SDC_resid(Real dt);
 
    void SDC_rhs_k_plus_one(MultiFab& rhs, Real dt,int m);
+
+   Real SDC_check_resid(MultiFab& res, Real dt,int m);
 
    void SDC_rhs_misdc(MultiFab& rhs, Real dt,int m);
 
