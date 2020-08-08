@@ -79,6 +79,7 @@ void main_main ()
     Real k_freq =1.0;
     pp.query("k_freq",k_freq);    
     Real epsilon = 0.25;
+    pp.query("epsilon",epsilon);
 
     // Set BC based on Nprob:
     for (int idim=0; idim < AMREX_SPACEDIM; ++idim) {
@@ -347,11 +348,10 @@ mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(face_bcoef)); // m_b_coeffs doesn'
                          geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&time, &Nprob);
     }
     
-    
+    phi_new.FillBoundary(geom.periodicity());
     if (Nprob<3){ // Dirichlet cases
     mlabec.fourthOrderBCFill(phi_new,bdry_values);
     }
-    phi_new.FillBoundary(geom.periodicity());
     
     
   /*  for ( MFIter mfi(bdry_values); mfi.isValid(); ++mfi )

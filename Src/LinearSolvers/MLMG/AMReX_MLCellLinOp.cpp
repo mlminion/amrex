@@ -602,23 +602,41 @@ MLCellLinOp::applyBC (int amrlev, int mglev, MultiFab& in, BCMode bc_mode, State
         {
             const RealTuple & bdl = bdlv[0];
             const BCTuple   & bdc = bdcv[0];
-
+            
+            // DIM=2 ONLY
+            
+            const Mask& m0 = maskvals[0][mfi];
+            const Mask& m1 = maskvals[1][mfi];
+            const Mask& m2 = maskvals[2][mfi];
+            const Mask& m3 = maskvals[3][mfi];
+            
+            
+            
             for (OrientationIter oitr; oitr; ++oitr)
             {
                 const Orientation ori = oitr();
 
                 int  cdr = ori;
-                Real bcl = bdl[ori];
-                int  bct = bdc[ori];
+             //   Real bcl = bdl[ori];
+              //  int  bct = bdc[ori];
+                   Real bcl = bdl[cdr];
+                  int  bct = bdc[cdr];
 
+             //   amrex::Print() << "Orientation = " << cdr << std::endl;
+                
                 foofab.setVal(10.0);
+             //   const FArrayBox& fsfab = (bndry != nullptr) ? bndry->bndryValues(ori)[mfi] : foofab;
                 const FArrayBox& fsfab = (bndry != nullptr) ? bndry->bndryValues(ori)[mfi] : foofab;
-
-                const Mask& m = maskvals[ori][mfi];
+             //   const Mask& m = maskvals[ori][mfi];
+                const Mask& m = maskvals[ori][mfi]; // Redundant maskval associated to current direction, keeps things working in other dimensions
 
                 amrex_mllinop_apply_bc(BL_TO_FORTRAN_BOX(vbx),
                                        BL_TO_FORTRAN_ANYD(in[mfi]),
                                        BL_TO_FORTRAN_ANYD(m),
+                                       BL_TO_FORTRAN_ANYD(m0),
+                                       BL_TO_FORTRAN_ANYD(m1),
+                                       BL_TO_FORTRAN_ANYD(m2),
+                                       BL_TO_FORTRAN_ANYD(m3),
                                        cdr, bct, bcl,
                                        BL_TO_FORTRAN_ANYD(fsfab),
                                        maxorder, dxinv, flagbc, ncomp, cross, op_order);

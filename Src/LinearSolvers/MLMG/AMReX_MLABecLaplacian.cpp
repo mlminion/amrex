@@ -406,6 +406,7 @@ MLABecLaplacian::Fsmooth (int amrlev, int mglev, MultiFab& sol, const MultiFab& 
                 
                 if(m_jacobi_smooth)
                 {
+                    
                     // abec_x_high, where x = jacobi or gsrb. Jacobi (currently) needs relaxation in periodic case.
                     abec_jacobi_high(thread_box, solnfab, rhsfab, alpha, dhx, dhy,
                                afab, bxfab, byfab,
@@ -415,8 +416,9 @@ MLABecLaplacian::Fsmooth (int amrlev, int mglev, MultiFab& sol, const MultiFab& 
                 else
                 {
                     
-                        if(1==1)
+                        if(1==0)
                         {
+                        
                         abec_gsrb_high(thread_box, solnfab, rhsfab, alpha, dhx, dhy,
                                          afab, bxfab, byfab,
                                          m0, m1, m2, m3,

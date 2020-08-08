@@ -47,6 +47,8 @@ void SDC_advance(MultiFab& phi_old,
   // includes periodic domain boundaries
   // Fill Dirichlet values
   bdry_values.setVal(0,0); bdry_values.setBndry(0);
+  // Fill periodic values and interal BC ghost cells
+  SDC.sol[0].FillBoundary(geom.periodicity());
   if(Nprob<3){
     for ( MFIter mfi(bdry_values); mfi.isValid(); ++mfi )
       {
@@ -58,8 +60,7 @@ void SDC_advance(MultiFab& phi_old,
     
     mlabec.fourthOrderBCFill(SDC.sol[0],bdry_values);
   }
-  // Fill periodic values and interal BC ghost cells
-  SDC.sol[0].FillBoundary(geom.periodicity());
+  
   
   // Fill non-periodic physical boundaries (doesn't do Dirichlet; probably only one ghost cell).
   // FillDomainBoundary(SDC.sol[0], geom, bc);
@@ -113,6 +114,8 @@ void SDC_advance(MultiFab& phi_old,
 	  // Get time value at next SDC node for implicit solve
 	  current_time = time+dt*SDC.qnodes[sdc_m+1];
 	  
+      // Fill periodic values and interal ghost cells
+      SDC.sol[sdc_m+1].FillBoundary(geom.periodicity());
 	  // Fill Dirichlet Values
 	  if (Nprob<3){
             for ( MFIter mfi(bdry_values); mfi.isValid(); ++mfi )
@@ -124,8 +127,7 @@ void SDC_advance(MultiFab& phi_old,
 	      }
             mlabec.fourthOrderBCFill(SDC.sol[sdc_m+1],bdry_values);
 	  }
-	  // Fill periodic values and interal ghost cells
-	  SDC.sol[sdc_m+1].FillBoundary(geom.periodicity());
+	  
         
 	  // Solve for the first implicit part
 	  SDC_fcomp(phi_new, flux, geom, bc, SDC, mlmg, mlabec,dt,face_bcoef,prod_stor,sdc_m+1,1, current_time, tot_Vcycle, tot_res_iter);
@@ -144,6 +146,7 @@ void SDC_advance(MultiFab& phi_old,
 	  // Compute the function values at node sdc_m+1
 	  
 	  // Shouldn't need the following BC code as the solve should linearly maintain it.
+      SDC.sol[sdc_m+1].FillBoundary(geom.periodicity());
 	  if (Nprob<3){
 	    for ( MFIter mfi(bdry_values); mfi.isValid(); ++mfi )
 	      {          const Box& bx = mfi.validbox();
@@ -153,7 +156,7 @@ void SDC_advance(MultiFab& phi_old,
 	      }
 	    mlabec.fourthOrderBCFill(SDC.sol[sdc_m+1],bdry_values);
 	  }
-	  SDC.sol[sdc_m+1].FillBoundary(geom.periodicity());
+	  
 	  //       mlabec.fillSolutionBC(0, SDC.sol[sdc_m+1], &bdry_values);
 
 	  //  Evaluate all the flux terms with new solution  
@@ -301,6 +304,8 @@ void SDC_fcomp(MultiFab& rhs,
   // Set boundary values
   MultiFab bdry_values(ba, dm, 1, 1);
   bdry_values.setVal(0.0); bdry_values.setBndry(0);
+ /*
+  SDC.sol[sdc_m].FillBoundary(geom.periodicity());
   if (Nprob < 3){
     for ( MFIter mfi(bdry_values); mfi.isValid(); ++mfi )
       {          const Box& bx = mfi.validbox();
@@ -308,9 +313,9 @@ void SDC_fcomp(MultiFab& rhs,
 			 BL_TO_FORTRAN_ANYD(bdry_values[mfi]),
 			 geom.CellSize(), geom.ProbLo(), geom.ProbHi(),&time, &Nprob);
       }
-    //  mlabec.fourthOrderBCFill(SDC.sol[sdc_m],bdry_values);
+      mlabec.fourthOrderBCFill(SDC.sol[sdc_m],bdry_values); // ??????????????????????????????????????????????
   }
-  SDC.sol[sdc_m].FillBoundary(geom.periodicity());
+  */
     
   if (npiece == 1)  
     {  // Do diffusion solve
@@ -323,6 +328,9 @@ void SDC_fcomp(MultiFab& rhs,
 
 	int max_res_iter = 50;  //  Set max residual loops
         pp.query("max_res_iter",max_res_iter);
+        
+    int numGS=10;     //  Set number of GS iterations (out dated)
+        pp.query("numGS",numGS);
 
 	int max_Vcycle=3;  // Set max number of Vcycles per residual solve
 	pp.query("max_Vcycle",max_Vcycle);
@@ -381,7 +389,21 @@ void SDC_fcomp(MultiFab& rhs,
 	    mlmg.setFixedIter(max_Vcycle);                
 	    mlmg.setVerbose(0);                
 	    mlabec.prepareForSolve();
-	    mlmg.solve({&corr}, {&resid}, tol_rel_MG, tol_abs_MG);
+	     mlmg.solve({&corr}, {&resid}, tol_rel_MG, tol_abs_MG);
+        /*  for (int i =1;i<=numGS;i++){
+              
+              
+              ///////////////////////////////////////////////////////////////
+              // BC FOR APPROX
+              ///////////////////////////////////////////////////////////////
+              
+              
+              
+              // SMOOTH
+              mlabec.Fsmooth(0,0, corr, resid, 0);
+              
+              
+          }*/
 	    numV=mlmg.getNumIters();
 	    tot_Vcycle+=numV;
 	    tot_res_iter++;
@@ -392,8 +414,9 @@ void SDC_fcomp(MultiFab& rhs,
 	    MultiFab::Saxpy(SDC.sol[sdc_m],1.0,corr,0,0,1,0);
 	    
 	    // Set boundaries on new solution
-            if (Nprob<3){mlabec.fourthOrderBCFill(SDC.sol[sdc_m],bdry_values);}
             SDC.sol[sdc_m].FillBoundary(geom.periodicity());
+            if (Nprob<3){mlabec.fourthOrderBCFill(SDC.sol[sdc_m],bdry_values);}
+          
             ++res_iter;
 	  }
     }
