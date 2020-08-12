@@ -91,9 +91,13 @@ void SDC_advance(MultiFab& phi_old,
   pp.query("tol_abs_SDC",tol_abs_SDC);  
   while ( (sdc_res > tol_abs_SDC) & (k <= SDC.Nsweeps) )  //  Loop over residual solves
     {
-      amrex::Print() << "SDC sweep " << k << ", substep " << sdc_m+1 <<"---\n";
-      //  Compute RHS integrals
-      SDC.SDC_rhs_integrals(dt);
+
+      //      SDC.SDC_rhs_integrals(dt);
+      SDC.SDC_integrals(dt);                              //  Compute RHS integrals
+      sdc_res=SDC.SDC_check_resid(phi_new,dt,SDC.Nnodes-1);  //  Check the size of the residual
+      SDC.SDC_integrals_diff(dt);                         //  Subtract approximate integral
+      
+      amrex::Print() << "SDC sweep " << k <<" -- SDC residual=" << sdc_res << " ---\n";
       
       //  Substep over SDC nodes
       for (sdc_m = 0; sdc_m < SDC.Nnodes-1; sdc_m++)

@@ -49,6 +49,7 @@ void main_main ()
 
     // Set  plot_err = 1 to  output the error to plot files instead of the solution
     int plot_err = 1;
+    pp.query("plot_err",plot_err);
     
     // Read in number of steps and final time
     pp.query("Nsteps",Nsteps);
