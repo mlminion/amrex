@@ -362,7 +362,7 @@ MLCellLinOp::smooth (int amrlev, int mglev, MultiFab& sol, const MultiFab& rhs,
     else
     {
         // Std Redblack doesn't make sense with 4th order scheme.
-        if(1==0){ //sol.boxArray().size()>1
+        if(1==1){ //sol.boxArray().size()>1
             // These only work for periodic currently
             if(1==0)
             {
