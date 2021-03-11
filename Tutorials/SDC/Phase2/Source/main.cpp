@@ -429,6 +429,6 @@ mlabec.setBCoeffs(0, amrex::GetArrOfConstPtrs(face_bcoef)); // m_b_coeffs doesn'
     amrex::Print() << "total SDC substeps = " << tot_SDC_sweep*(Nnodes-1) << std::endl;
     amrex::Print() << "total residual iters = " << tot_res_iter << std::endl;
     amrex::Print() << "total V cycles = " << tot_Vcycle << std::endl;
-    amrex::Print() << "dat = [" << stop_time  << ", "<< Nsteps << ", " << tot_SDC_sweep <<", " << tot_res_iter <<", "<< tot_Vcycle <<", "<< phi_error <<"]" << std::endl;
+    amrex::Print() << "dat " << stop_time  << ", "<< Nsteps << ", " << tot_SDC_sweep <<", " << tot_res_iter <<", "<< tot_Vcycle <<", "<< phi_error << std::endl;
 
 }

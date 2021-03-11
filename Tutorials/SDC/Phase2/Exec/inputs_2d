@@ -1,46 +1,44 @@
 # Time step is set to Tfin/nsteps 
-Tfin = 0.25
+Tfin = 1.0
 Nsteps = 8
 
 #  Multigrid stuff
 MGord=244
 Lord=444
 
-max_Vcycle=3
+max_Vcycle=15
 
 tol_abs_MG=1.0e-12
 tol_rel_MG=1.0e-12
-tol_abs_res= 1.0e-12
-tol_rel_res= 1.0e-12
-max_res_iter=50
+tol_abs_res= 1.0e-10
+tol_rel_res= 1.0e-10
+max_res_iter=15
 
 #  Spatial size 
-n_cell = 32
-max_grid_size = 32
+n_cell = 128
+max_grid_size = 128
 
 #  Define SDC parameters
-Nnodes=4
+Nnodes=3
 Npieces=2
-max_SDC_sweeps=8
+max_SDC_sweeps=50
 Nprob=4
 tol_abs_SDC = 1.0e-8
 
-
 #  Define the advection, diffusion, and reaction parameters
-a=1.0
+a=0.0
 d=0.1
 r=0.0
 
-
 #  Change the frequency of the sinusoidal exact solution
 k_freq=1.0
-epsilon=0.0
+epsilon=0.25
 
 # Relaxation in smoother
 relaxation_parameter = 1.0
 jacobi_smooth=false
 
 #set plot_int to 1 to make plot files
-plot_int = 1
+plot_int = 0
 #set plot_err to 1 to make plot files be errors
 plot_err = 1

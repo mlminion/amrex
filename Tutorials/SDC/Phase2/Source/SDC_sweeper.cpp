@@ -89,7 +89,8 @@ void SDC_advance(MultiFab& phi_old,
   Real sdc_res=10.0e10;
   Real tol_abs_SDC=0.0;
   pp.query("tol_abs_SDC",tol_abs_SDC);  
-  while ( (sdc_res > tol_abs_SDC) & (k <= SDC.Nsweeps) )  //  Loop over residual solves
+  //  while ( (sdc_res > tol_abs_SDC) & (k <= SDC.Nsweeps) )  //  Loop over residual solves
+   while (  (k <= SDC.Nsweeps) & (sdc_res > tol_abs_SDC))  //  Loop over residual solves  
     {
 
       //      SDC.SDC_rhs_integrals(dt);
@@ -98,7 +99,7 @@ void SDC_advance(MultiFab& phi_old,
       SDC.SDC_integrals_diff(dt);                         //  Subtract approximate integral
       
       amrex::Print() << "SDC sweep " << k <<" -- SDC residual=" << sdc_res << " ---\n";
-      
+      if (sdc_res > tol_abs_SDC) {  
       //  Substep over SDC nodes
       for (sdc_m = 0; sdc_m < SDC.Nnodes-1; sdc_m++)
 	{
@@ -108,12 +109,12 @@ void SDC_advance(MultiFab& phi_old,
 	  SDC.SDC_rhs_k_plus_one(phi_new,dt,sdc_m);
 	  
 	  // get the best initial guess for implicit solve
-	  MultiFab::Copy(SDC.sol[sdc_m+1],phi_new, 0, 0, 1, phi_new.nGrow());
+	  //	  MultiFab::Copy(SDC.sol[sdc_m+1],phi_new, 0, 0, 1, phi_new.nGrow());
 	  for ( MFIter mfi(SDC.sol[sdc_m+1]); mfi.isValid(); ++mfi )
 	    {
 	      //	      const Box& bx = mfi.validbox();
 	      qij = dt*SDC.Qimp[sdc_m][sdc_m+1];
-	      SDC.sol[sdc_m+1][mfi].saxpy(qij,SDC.f[1][sdc_m+1][mfi]);
+	      //SDC.sol[sdc_m+1][mfi].saxpy(qij,SDC.f[1][sdc_m+1][mfi]);
 	    }
 	  // Get time value at next SDC node for implicit solve
 	  current_time = time+dt*SDC.qnodes[sdc_m+1];
@@ -167,11 +168,17 @@ void SDC_advance(MultiFab& phi_old,
 	  SDC_feval(flux,geom,bc,SDC,face_bcoef,prod_stor,sdc_m+1,-1,current_time);
 	  
 	} // end SDC substep loop (sdc_m)
-      
       k++;
+
+      }
+      else
+	{
+	  amrex::Print() << "--- SDC converged at iter " << k <<"\n";	  
+	}
+      
     }  // end sweeps loop (k)
   
-  tot_SDC_sweep+=k-1;  //  increment total sweeps done
+  tot_SDC_sweep+=k;  //  increment total sweeps done
   // Return the last node in SDC.sol
   MultiFab::Copy(phi_new, SDC.sol[SDC.Nnodes-1], 0, 0, 1, SDC.sol[SDC.Nnodes-1].nGrow());
 
